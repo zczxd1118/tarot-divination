@@ -1115,6 +1115,80 @@
       text-align: center;
     }
 
+    /* Style Selector */
+    .style-selector {
+      margin: 1rem 0 1.5rem 0;
+      padding: 1rem;
+      background: rgba(45, 27, 78, 0.4);
+      border: 1px solid var(--gold-dark);
+      border-radius: 12px;
+    }
+
+    .style-selector-label {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 0.75rem;
+      letter-spacing: 0.05em;
+    }
+
+    .style-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .style-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.5rem 0.9rem;
+      background: rgba(13, 6, 20, 0.6);
+      border: 1px solid var(--gold-dark);
+      border-radius: 999px;
+      color: var(--text-light);
+      font-family: inherit;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .style-chip:hover {
+      border-color: var(--gold-primary);
+      background: rgba(201, 162, 39, 0.1);
+    }
+
+    .style-chip.active {
+      background: linear-gradient(135deg, var(--gold-dark), var(--gold-primary));
+      color: var(--bg-deep);
+      border-color: var(--gold-primary);
+      font-weight: 600;
+      box-shadow: 0 0 12px var(--accent-glow);
+    }
+
+    .chip-icon {
+      font-size: 1rem;
+      line-height: 1;
+    }
+
+    .chip-name {
+      letter-spacing: 0.05em;
+    }
+
+    /* 解读内容样式增强 */
+    .ai-card-content {
+      white-space: pre-wrap;
+      line-height: 1.85;
+    }
+
+    @media (max-width: 480px) {
+      .style-chip {
+        padding: 0.45rem 0.7rem;
+        font-size: 0.78rem;
+      }
+      .chip-icon { font-size: 0.9rem; }
+    }
+
     /* AI Interpretation */
     .ai-section {
       width: 100%;
@@ -1685,7 +1759,29 @@
           <span class="ai-icon">🔮</span>
           <span class="ai-title">塔罗解读</span>
         </div>
-        
+
+        <!-- 解读风格选择器 -->
+        <div class="style-selector" id="styleSelector">
+          <div class="style-selector-label">选择解读风格：</div>
+          <div class="style-chips">
+            <button class="style-chip active" data-style="mystic" onclick="changeInterpretStyle('mystic')">
+              <span class="chip-icon">🌙</span><span class="chip-name">神秘占卜师</span>
+            </button>
+            <button class="style-chip" data-style="friend" onclick="changeInterpretStyle('friend')">
+              <span class="chip-icon">💛</span><span class="chip-name">知心朋友</span>
+            </button>
+            <button class="style-chip" data-style="psychologist" onclick="changeInterpretStyle('psychologist')">
+              <span class="chip-icon">🧠</span><span class="chip-name">心理咨询师</span>
+            </button>
+            <button class="style-chip" data-style="coach" onclick="changeInterpretStyle('coach')">
+              <span class="chip-icon">⚡</span><span class="chip-name">直白教练</span>
+            </button>
+            <button class="style-chip" data-style="poet" onclick="changeInterpretStyle('poet')">
+              <span class="chip-icon">🌹</span><span class="chip-name">文学诗意</span>
+            </button>
+          </div>
+        </div>
+
         <div class="ai-loading" id="aiLoading">
           <div class="loading-spinner"></div>
           <div class="ai-loading-text">正在生成解读...</div>
@@ -2656,6 +2752,10 @@
       drawnCards: [],
       revealed: false,
       result: {},
+      interpretStyle: (function() {
+        try { return localStorage.getItem('tarotStyle') || 'mystic'; }
+        catch(e) { return 'mystic'; }
+      })(),
       history: []
     };
 
@@ -3087,6 +3187,12 @@
     function displayResult(result) {
       state.result = result;
       showPage('resultPage');
+
+      // 同步当前风格 chip 的高亮
+      const currentStyle = state.interpretStyle || 'mystic';
+      document.querySelectorAll('.style-chip').forEach(chip => {
+        chip.classList.toggle('active', chip.dataset.style === currentStyle);
+      });
       
       const spreadConfig = SPREADS[result.spread || 'three'];
       const modeText = result.mode === 'manual' ? '选牌' : '随机';
@@ -3170,245 +3276,365 @@
     }
 
     function generateAIInterpretation(result) {
+      // 缓存最后一次结果，方便切换风格时重新渲染
+      window.__lastResult = result;
+
       const aiLoading = document.getElementById('aiLoading');
       const aiContent = document.getElementById('aiContent');
       const basicSummary = document.getElementById('basicSummary');
-      
+
       aiLoading.style.display = 'block';
       aiContent.classList.remove('active');
       basicSummary.style.display = 'none';
 
       setTimeout(() => {
-        const interpretation = buildEnhancedInterpretation(result.question, result.cards);
-        
-        document.getElementById('aiProblemUnderstanding').textContent = interpretation.problem;
-        document.getElementById('aiCardAnalysis').textContent = interpretation.cardsAnalysis;
-        document.getElementById('aiRelationship').textContent = interpretation.relationship;
-        document.getElementById('aiAdvice').textContent = interpretation.advice;
-        
-        document.getElementById('summaryText').textContent = generateSummary(result.cards);
-        
+        renderInterpretation(result);
         aiLoading.style.display = 'none';
         aiContent.classList.add('active');
         basicSummary.style.display = 'block';
-      }, 2500);
+      }, 1200);
     }
 
-    function buildEnhancedInterpretation(question, cards) {
+    // 切换解读风格（由风格 chip 调用）
+    function changeInterpretStyle(styleKey) {
+      state.interpretStyle = styleKey;
+      try { localStorage.setItem('tarotStyle', styleKey); } catch(e) {}
+      // 更新 chip 高亮
+      document.querySelectorAll('.style-chip').forEach(chip => {
+        chip.classList.toggle('active', chip.dataset.style === styleKey);
+      });
+      // 如果已有解读结果，重新渲染
+      if (window.__lastResult) renderInterpretation(window.__lastResult);
+    }
+
+    function renderInterpretation(result) {
+      const styleKey = state.interpretStyle || 'mystic';
+      const interp = buildStyledInterpretation(result.question, result.cards, styleKey);
+      document.getElementById('aiProblemUnderstanding').textContent = interp.problem;
+      document.getElementById('aiCardAnalysis').textContent = interp.cardsAnalysis;
+      document.getElementById('aiRelationship').textContent = interp.relationship;
+      document.getElementById('aiAdvice').textContent = interp.advice;
+      document.getElementById('summaryText').textContent = interp.summary;
+    }
+
+    // ============ 解读风格定义 ============
+    const STYLES = {
+      mystic: {
+        name: '神秘占卜师',
+        salutation: '亲爱的求问者',
+        problemPrefix: '🌙 让我们凝视水晶球，聆听星辰的低语……\n\n',
+        themeIntro: '牌阵在烛光下徐徐展开，编织出属于你的星象图谱：',
+        adviceIntro: '☽ 星辰为你指引以下方向：',
+        connector: '与此同时，',
+        cardLeadIn: (c, ori) => `第 ${c.idx + 1 } 重启示 · ${c.position}\n《${c.name_cn}》${ori === '逆位' ? '颠倒' : '正立'}于此位 ——`,
+        meaningJoiner: '这张古老的牌在你面前低语：',
+        actionPrefix: '【此牌指引你】',
+        endingNote: '\n\n✦ 命运的丝线已为你显现，但织布的手仍是你自己。'
+      },
+      friend: {
+        name: '知心朋友',
+        salutation: '亲爱的',
+        problemPrefix: '嘿，先深呼吸一下。我们一起看看牌想说什么。\n\n',
+        themeIntro: '我看了看这几张牌，整体感觉是这样的：',
+        adviceIntro: '说几句心里话：',
+        connector: '而且啊，',
+        cardLeadIn: (c, ori) => `第 ${c.idx + 1} 张 · ${c.position}\n《${c.name_cn}》（${ori}）`,
+        meaningJoiner: '它在告诉你的是：',
+        actionPrefix: '【我觉得你可以】',
+        endingNote: '\n\n💛 不管牌怎么说，我都站在你这边。慢慢来，没事的。'
+      },
+      psychologist: {
+        name: '心理咨询师',
+        salutation: '你好',
+        problemPrefix: '在我们开始之前，请允许我先复述并确认你的关切：\n\n',
+        themeIntro: '从这组牌的整体格式塔（gestalt）来看，呈现出以下心理意象：',
+        adviceIntro: '基于上述分析，我想提出几点专业建议供你参考：',
+        connector: '与之相关的是，',
+        cardLeadIn: (c, ori) => `卡片 ${c.idx + 1} | 位置：${c.position}\n《${c.name_cn}》（${ori}）作为投射工具，呈现：`,
+        meaningJoiner: '此牌的象征意义指向：',
+        actionPrefix: '【可探索的心理资源】',
+        endingNote: '\n\n📋 请记住：塔罗在此作为投射工具，帮助你的潜意识与意识对话；最终的洞察来自你自己。'
+      },
+      coach: {
+        name: '直白教练',
+        salutation: '听好了',
+        problemPrefix: '不绕弯子，直接说重点。\n\n',
+        themeIntro: '牌面给出的事实是：',
+        adviceIntro: '现在，你需要做这些事：',
+        connector: '同时，',
+        cardLeadIn: (c, ori) => `${c.idx + 1}. ${c.position} → 《${c.name_cn}》（${ori}）`,
+        meaningJoiner: '核心信号：',
+        actionPrefix: '【行动项】',
+        endingNote: '\n\n⚡ 别再想了，开始做。一周后回来复盘。'
+      },
+      poet: {
+        name: '文学诗意',
+        salutation: '远方的旅人',
+        problemPrefix: '🌹 当夜风轻抚问题的轮廓，牌如花瓣般落下——\n\n',
+        themeIntro: '让我为你描摹这幅由牌构成的画卷：',
+        adviceIntro: '愿这些诗一般的低语轻轻落入你的心田：',
+        connector: '然后，',
+        cardLeadIn: (c, ori) => `第 ${c.idx + 1} 章 · 《${c.name_cn}》（${ori}）落于「${c.position}」之畔——`,
+        meaningJoiner: '它如此低吟：',
+        actionPrefix: '【愿你】',
+        endingNote: '\n\n🌹 牌已合卷，而你的故事，才正是新的章节。'
+      }
+    };
+
+    // ============ 主题识别（根据问题） ============
+    const TOPIC_KEYWORDS = {
+      love:    ['感情','爱情','喜欢','分手','复合','暗恋','男朋友','女朋友','伴侣','婚姻','结婚','约会','喜欢的人','心动','单身','恋爱','吵架','在一起'],
+      career:  ['工作','事业','职业','跳槽','升职','加薪','offer','面试','创业','项目','老板','同事','离职','晋升','发展','行业','转行','求职'],
+      money:   ['钱','财务','收入','投资','理财','负债','买房','贷款','破产','花钱','存钱','财富','经济','支出','赚钱'],
+      study:   ['学习','考试','学业','留学','考研','高考','学校','成绩','论文','申请','专业','毕业','补习','保研'],
+      health:  ['健康','身体','疾病','失眠','焦虑','抑郁','减肥','运动','心理','情绪','压力','疲惫','睡眠','医生'],
+      decision:['选择','决定','要不要','该不该','犹豫','纠结','两难','到底','取舍','抉择','怎么办','是否'],
+      self:    ['自己','成长','迷茫','方向','人生','使命','意义','目标','梦想','改变','自我','认识自己']
+    };
+
+    function detectTopic(question) {
+      if (!question) return null;
+      const q = question.trim();
+      if (!q) return null;
+      for (const [topic, words] of Object.entries(TOPIC_KEYWORDS)) {
+        if (words.some(w => q.includes(w))) return topic;
+      }
+      return 'general';
+    }
+
+    const TOPIC_ANGLES = {
+      love:    { focus: '感情关系', dimensions: ['你的内心需求','对方的能量','关系的现状','可能的走向'] },
+      career:  { focus: '事业发展', dimensions: ['当前的能量与资源','外部的机遇与阻碍','你的应对方式','可能的发展路径'] },
+      money:   { focus: '财务状况', dimensions: ['现有的财务能量','潜在的风险','机遇与可能','你需要培养的财务习惯'] },
+      study:   { focus: '学业成长', dimensions: ['你目前的学习状态','需要克服的内在障碍','外部支持系统','努力的回报'] },
+      health:  { focus: '身心健康', dimensions: ['身体层面','情绪层面','潜意识层面','调整方向'] },
+      decision:{ focus: '抉择难题', dimensions: ['选项A的能量','选项B的能量','你内心真实倾向','遵循内心的代价与回报'] },
+      self:    { focus: '自我探索', dimensions: ['你目前的位置','内在的呼唤','需要面对的功课','可能的成长方向'] },
+      general: { focus: '当前生命状态', dimensions: ['整体能量','核心议题','当下的功课','未来的可能'] }
+    };
+
+    // ============ 单张牌的"四维"细节 ============
+    function buildCardDeepRead(item, idx, style, topic) {
+      const card = item.card;
+      const ori = item.isReversed ? '逆位' : '正位';
+      const meaning = item.isReversed ? card.meaning_reversed : card.meaning_upright;
+      const keywords = item.isReversed ? card.keywords_reversed : card.keywords_upright;
+      const lead = style.cardLeadIn({ idx, name_cn: card.name_cn, position: item.position }, ori);
+
+      // 维度 1：象征
+      const symbolLine = `🔮 象征意涵：${keywords.slice(0,4).join(' · ')}`;
+
+      // 维度 2：能量本质
+      const energyLine = `🌊 能量本质：${style.meaningJoiner}${meaning}`;
+
+      // 维度 3：与你的关联（结合主题）
+      const topicAngle = TOPIC_ANGLES[topic] || TOPIC_ANGLES.general;
+      const dim = topicAngle.dimensions[idx % topicAngle.dimensions.length];
+      const relLine = `🪞 对你而言：在「${topicAngle.focus}」的「${dim}」这一面，这张牌${item.isReversed ? '提示你需要审视、调整或释放' : '为你带来肯定与方向'}。`;
+
+      // 维度 4：行动指引
+      const action = buildCardAction(card, item.isReversed, topic);
+      const actionLine = `${style.actionPrefix}：${action}`;
+
+      return `${lead}\n${symbolLine}\n${energyLine}\n${relLine}\n${actionLine}`;
+    }
+
+    // 根据牌+正逆+主题 给出具体行动建议
+    function buildCardAction(card, isReversed, topic) {
+      const isMajor = card.arcana === 'major';
+      // 大阿卡那的标志性行动（精选关键牌）
+      const majorActions = {
+        0: ['以初学者之心拥抱新机会，但记得带上你的判断力', '检视你是否过于冲动，回到内心做一次梳理'],
+        1: ['你已具备所需的全部资源，是时候将意图转化为行动', '审视是否在自我欺骗或浪费才能'],
+        2: ['静下来聆听内在的声音，答案在你之中', '警惕被表象迷惑，揭开那层薄纱'],
+        3: ['以柔软而丰盛的姿态去创造与滋养', '检查你是否在过度付出而忽略了自己'],
+        4: ['建立秩序与边界，做一个负责的掌权者', '反思是否过于固执或权力被剥夺'],
+        5: ['寻求传统智慧或导师的指引', '挑战不再适用的规则，走自己的路'],
+        6: ['用心做出真正符合内在价值观的选择', '避免摇摆，认清关系中的真实需求'],
+        7: ['以坚定的意志驾驭内外两股能量，向前突破', '检视是否方向错乱或失控，先稳住'],
+        8: ['以柔克刚，用耐心与慈悲驯服内在的猛兽', '正视自我怀疑，从小胜利开始重建信心'],
+        9: ['给自己独处与反思的空间，向内寻找真理', '走出孤立，接受外界的善意与连结'],
+        10: ['顺应变化的节奏，相信循环的智慧', '识别那些可以被打破的恶性循环'],
+        11: ['以诚实和公正面对事实，承担相应的后果', '正视你正在逃避的真相或责任'],
+        12: ['暂停行动，以全新的视角看待问题', '走出停滞，做出一个真正的决定'],
+        13: ['让该结束的结束，为新的开始腾出空间', '抗拒结束只会延长痛苦，温柔地放手'],
+        14: ['寻找平衡与中道，调和对立的能量', '检视哪里失衡，做一次校准'],
+        15: ['看清束缚你的并非外在，而是你的恐惧或欲望', '是时候打破锁链，但要清醒地选择自由'],
+        16: ['接受这场震荡，旧结构倒下是为了真实的重建', '在动荡中保护好自己，然后重新定义地基'],
+        17: ['保持希望，让你内在的星光指引方向', '当希望黯淡时，回到当下做最小的一步'],
+        18: ['信任直觉而非逻辑，但区分幻觉与真实', '走出迷雾，用清醒的光照亮潜意识'],
+        19: ['尽情绽放你的喜悦与生命力', '从短暂的低落中，提取曾被遮蔽的光'],
+        20: ['听从内在的召唤，回应那个新的自己', '回顾过去，原谅旧版本的你，迎接新生'],
+        21: ['庆祝完成，整合所有的旅程经验', '识别那个未完成的拼图，给它一个收尾']
+      };
+      if (isMajor && majorActions[card.id]) {
+        return majorActions[card.id][isReversed ? 1 : 0];
+      }
+      // 小阿卡那按花色给行动方向
+      const suitActions = {
+        wands:    { up: '点燃你的热情，敢于行动与冒险', rev: '降温与反思，避免冲动消耗' },
+        cups:     { up: '敞开情感的流动，让连结发生', rev: '处理未消化的情绪，重建情感的清明' },
+        swords:   { up: '运用思考与沟通，划清边界并直面真相', rev: '停止内耗的思维循环，回到事实层面' },
+        pentacles:{ up: '脚踏实地耕耘，关注资源与身体', rev: '校准价值观与现实的差距，做务实的调整' }
+      };
+      const s = suitActions[card.suit] || suitActions.wands;
+      return isReversed ? s.rev : s.up;
+    }
+
+    // ============ 主入口：风格化解读构建 ============
+    function buildStyledInterpretation(question, cards, styleKey) {
+      const style = STYLES[styleKey] || STYLES.mystic;
       const hasQuestion = question && question.trim().length > 0;
+      const topic = detectTopic(question);
+      const topicAngle = TOPIC_ANGLES[topic] || TOPIC_ANGLES.general;
       const cardCount = cards.length;
-      
-      // 1. Problem Understanding
-      let problem;
-      if (hasQuestion) {
-        problem = `你提出的问题是："${question.trim()}"
-
-这个问题触及了你内心深处的一个关注点。无论答案如何，能提出这个问题本身就代表着你对自我和生活的觉察与思考。`;
-      } else {
-        problem = `你尚未明确提出具体问题，这${cardCount}张牌将以更 general 的方式呈现你当下的状态与可能的走向。
-
-即使没有特定问题，塔罗牌依然能够为你提供关于当前能量流动的洞察。`;
-      }
-      
-      // 2. Card Relationship Analysis (Enhanced - Focus on card-to-card connections)
-      const cardAnalysis = analyzeCardRelationships(cards);
-      
-      // 3. Timeline Relationship (Past → Present → Future)
-      const relationship = buildTimelineAnalysis(cards, hasQuestion);
-      
-      // 4. Advice
-      const advice = buildAdvice(cards, hasQuestion);
-      
-      return {
-        problem,
-        cardsAnalysis: cardAnalysis,
-        relationship,
-        advice
-      };
-    }
-
-    function analyzeCardRelationships(cards) {
-      const cardCount = cards.length;
-      const past = cards[0];
-      const present = cards[1];
-      const future = cards[2] || null;
-      const core = cards[3] || null;
-      const reality = cards[4] || null;
-      const pastCard = past?.card;
-      const presentCard = present?.card;
-      const futureCard = future?.card;
-      
-      // Analyze card themes
-      const pastTheme = getCardTheme(pastCard);
-      const presentTheme = getCardTheme(presentCard);
-      const futureTheme = getCardTheme(futureCard);
-      
-      // Check for narrative connections
-      let narrative = '';
-      const themes = [pastTheme, presentTheme, futureTheme];
-      
-      // Transformation analysis
-      if (isTransformation(pastCard, futureCard)) {
-        narrative = `【核心叙事】这三张牌构成一个"转变"的故事：
-
-从 ${pastCard.name_cn} 的能量，经过 ${presentCard.name_cn} 的过渡，最终导向 ${futureCard.name_cn} 的状态。
-
-这暗示你正在经历一个内在或外在的转变过程。`;
-      } else if (isConflict(pastCard, presentCard, futureCard)) {
-        narrative = `【核心叙事】这三张牌之间存在某种张力：
-
-${pastCard.name_cn} 的能量与 ${presentCard.name_cn} 产生碰撞，而这种碰撞的结果将影响 ${futureCard.name_cn} 的呈现。
-
-这可能意味着你需要在不同的力量之间找到平衡。`;
-      } else if (isContinuity(pastCard, presentCard, futureCard)) {
-        narrative = `【核心叙事】这三张牌显示出能量的延续性：
-
-从 ${pastCard.name_cn} → ${presentCard.name_cn} → ${futureCard.name_cn}，能量在流动中发展。
-
-这是一个渐进的过程，每一张牌都在为下一张铺垫。`;
-      } else {
-        narrative = `【核心叙事】这三张牌呈现出多元但相互关联的主题：
-
-第一张牌 ${pastCard.name_cn} 代表背景能量
-第二张牌 ${presentCard.name_cn} 代表当前挑战
-第三张牌 ${futureCard.name_cn} 代表发展方向
-
-它们虽然来自不同的生命领域，但共同为你勾勒出一个完整的故事。`;
-      }
-      
-      // Card-specific analysis
-      let detailedAnalysis = '\n\n【逐张核心解读】\n\n';
-      
-      cards.forEach((c, i) => {
-        const pos = c.position;
-        const ori = c.isReversed ? '逆位' : '正位';
-        const meaning = c.isReversed ? c.card.meaning_reversed : c.card.meaning_upright;
-        detailedAnalysis += `${i + 1}. 【${c.card.name_cn}】（${ori}）位于 ${pos} 位\n   ${meaning}\n\n`;
-      });
-      
-      return narrative + detailedAnalysis;
-    }
-
-    function getCardTheme(card) {
-      const majorThemes = {
-        0: 'newJourney', 1: 'resources', 2: 'intuition', 3: 'nurturing', 4: 'authority',
-        5: 'tradition', 6: 'choices', 7: 'determination', 8: 'innerStrength', 9: 'innerWork',
-        10: 'change', 11: 'truth', 12: 'pause', 13: 'transformation', 14: 'balance',
-        15: 'bondage', 16: 'upheaval', 17: 'hope', 18: 'illusion', 19: 'joy',
-        20: 'rebirth', 21: 'completion'
-      };
-      return card.arcana === 'major' ? majorThemes[card.id] : `minor_${card.suit}`;
-    }
-
-    function isTransformation(card1, card2) {
-      const transformations = [
-        [13, 17], [17, 21], [13, 20], [12, 9], [16, 17], [0, 19]
-      ];
-      return transformations.some(t => 
-        (t[0] === card1.id && t[1] === card2.id) ||
-        (t[1] === card1.id && t[0] === card2.id)
-      );
-    }
-
-    function isConflict(c1, c2, c3) {
-      const conflictCards = [15, 16, 18, 52, 54, 8];
-      return [c1.id, c2.id, c3.id].filter(id => conflictCards.includes(id)).length >= 2;
-    }
-
-    function isContinuity(card1, card2, card3) {
-      const arcanaCount = [card1.arcana, card2.arcana, card3.arcana].filter(a => a === 'minor').length;
-      const sameSuit = card1.suit && card1.suit === card2.suit && card2.suit === card3.suit;
-      return arcanaCount >= 2 || sameSuit;
-    }
-
-    function buildTimelineAnalysis(cards, hasQuestion) {
-      const cardCount = cards.length;
-      let timeline = `【牌阵发展逻辑】
-
-`;
-      
-      cards.forEach((c, i) => {
-        const posName = c.position;
-        const posLabel = cardCount === 1 ? '今日运势' : posName;
-        timeline += `◆ ${posLabel}（${c.card.name_cn} ${c.isReversed ? '逆位' : '正位'}）
-`;
-        
-        if (hasQuestion) {
-          timeline += `这张牌揭示了与你的问题相关的${posName}能量。`;
-        }
-        
-        if (c.isReversed) {
-          timeline += `当前能量有所阻滞或需要调整。`;
-        } else {
-          timeline += `能量处于积极流动状态。`;
-        }
-        timeline += `\n\n`;
-      });
-      
-      // Add relationship summary
       const reversals = cards.filter(c => c.isReversed).length;
-      timeline += `\n【能量流动总结】
-`;
-      
-      if (reversals === 0) {
-        timeline += `${cardCount}张牌均为正位，能量流动顺畅。这是一个较为理想的牌阵组合，暗示整体发展趋势积极。`;
-      } else if (reversals === cardCount) {
-        timeline += `${cardCount}张牌均为逆位，能量需要更多时间来转化和整合。建议给自己更多耐心，不要急于求成。`;
-      } else {
-        timeline += `其中${reversals}张为逆位。这种配置通常表示能量正在转化中——逆位的牌往往是一个需要整合的课题。`;
-      }
-      
-      return timeline;
-    }
+      const majors = cards.filter(c => c.card.arcana === 'major').length;
 
-    function buildAdvice(cards, hasQuestion) {
-      const cardCount = cards.length;
-      
-      let advice = '【整体建议】\n\n';
-      
+      // ---------- 1. 问题理解 ----------
+      let problem = style.problemPrefix;
+      problem += `${style.salutation}：\n\n`;
       if (hasQuestion) {
-        advice += `针对你的问题 "${state.question}"，我有以下建议：
+        problem += `你向牌阵抛出的问题是：\n"${question.trim()}"\n\n`;
+        if (topic && topic !== 'general') {
+          problem += `这是一个关于「${topicAngle.focus}」的提问。我将围绕「${topicAngle.dimensions.join('」、「')}」四个维度展开为你解读。\n\n`;
+        } else {
+          problem += `这是一个开放式的提问，我将从能量整体走向、核心议题、当下功课和可能的未来四个层面为你呈现。\n\n`;
+        }
+        problem += `提问本身已是觉察的开始——能问出这个问题，说明你内心已对答案有所感知，只是需要被印证或被指引。`;
+      } else {
+        problem += `你没有提出具体问题，那就让这 ${cardCount} 张牌为你呈现当下生命场域的整体能量画面。\n\n`;
+        problem += `有时候，无问之问反而最诚实——它让你卸下了"想要某个答案"的执念，让真正需要被看见的能量浮现出来。`;
+      }
 
-`;
+      // ---------- 2. 牌阵关系分析（每张牌四维细节） ----------
+      let cardsAnalysis = `${style.themeIntro}\n\n`;
+      cardsAnalysis += `📊 牌阵全景\n`;
+      cardsAnalysis += `· 共 ${cardCount} 张牌；其中大阿卡那 ${majors} 张，小阿卡那 ${cardCount - majors} 张\n`;
+      cardsAnalysis += `· 正位 ${cardCount - reversals} 张，逆位 ${reversals} 张\n`;
+      if (majors >= Math.ceil(cardCount / 2)) {
+        cardsAnalysis += `· 大阿卡那占比偏高，意味着此刻你正在面对的是命运层面的重要主题，而非日常琐碎\n`;
+      } else {
+        cardsAnalysis += `· 小阿卡那为主，议题较聚焦于日常生活的具体面向\n`;
       }
-      
-      // Priority-based advice
-      const priorityCards = cards.filter(c => c.isReversed);
-      
-      if (priorityCards.length > 0) {
-        advice += `1. 优先关注：`;
-        priorityCards.forEach(p => {
-          advice += `\n   · 关注${p.position}的${p.card.name_cn}能量——这可能是当前的关键课题`;
+      // 花色分布
+      const suits = { wands:'🔥权杖(行动/激情)', cups:'💧圣杯(情感/关系)', swords:'⚔️宝剑(思考/沟通)', pentacles:'🌿钱币(物质/务实)' };
+      const suitCounts = {};
+      cards.forEach(c => { if (c.card.suit) suitCounts[c.card.suit] = (suitCounts[c.card.suit]||0) + 1; });
+      const dominantSuit = Object.entries(suitCounts).sort((a,b) => b[1]-a[1])[0];
+      if (dominantSuit && dominantSuit[1] >= 2) {
+        cardsAnalysis += `· ${suits[dominantSuit[0]]}元素突出，提示当前能量集中于此领域\n`;
+      }
+      cardsAnalysis += `\n──────────\n\n`;
+
+      // 逐张深度解读
+      cards.forEach((c, i) => {
+        cardsAnalysis += buildCardDeepRead(c, i, style, topic) + `\n\n`;
+      });
+
+      // ---------- 3. 牌与牌之间的发展逻辑 ----------
+      let relationship = `🌀 牌阵叙事线\n\n`;
+      if (cardCount === 1) {
+        relationship += `单张抽牌指向一个核心讯息：${cards[0].card.name_cn}（${cards[0].isReversed ? '逆位' : '正位'}）。\n`;
+        relationship += `这张牌不必依赖其他牌，它本身就是一个完整的回答。请把它当作今日（或当下）最该被你看见的能量。`;
+      } else {
+        cards.forEach((c, i) => {
+          const arrow = i === cards.length - 1 ? '' : '\n   ↓\n';
+          relationship += `【${c.position}】《${c.card.name_cn}》（${c.isReversed ? '逆位' : '正位'}）${arrow}`;
         });
-        advice += '\n\n';
+        relationship += `\n\n──────────\n\n`;
+
+        // 推断叙事
+        if (cardCount >= 3) {
+          const past = cards[0], present = cards[1], future = cards[2];
+          relationship += `🪶 故事走向：\n\n`;
+          relationship += `从${past.card.name_cn}的能量出发——这是你的起点或背景，${past.isReversed ? '其中有未完结或被压抑的部分需要先被看见' : '它为你提供了基础与资源'}。\n\n`;
+          relationship += `${style.connector}你正处在${present.card.name_cn}的当下——${present.isReversed ? '当前的状态有阻滞或反向的张力，这并不意味着失败，而是一次内在的提醒' : '此刻能量正积极运转，是行动或表达的好时机'}。\n\n`;
+          relationship += `若沿此路径继续，未来将走向${future.card.name_cn}——${future.isReversed ? '前方的景象有未明朗之处，但这正是你可以提前调整以改变结果的窗口' : '未来呈现出明朗的方向，值得你保持当下的步调'}。\n\n`;
+          if (cardCount > 3) {
+            relationship += `此外，余下的牌为整个故事补充了更多侧面：\n`;
+            for (let i = 3; i < cardCount; i++) {
+              relationship += `· ${cards[i].position}的《${cards[i].card.name_cn}》提示${cards[i].isReversed ? '一个需要重新看待的角度' : '一项可被善用的能量'}\n`;
+            }
+          }
+        } else {
+          // 两张牌
+          relationship += `两张牌呈现了一组对照：${cards[0].card.name_cn} vs ${cards[1].card.name_cn}。\n`;
+          relationship += `它们之间的张力或互补，正是你需要在「${cards[0].position}」与「${cards[1].position}」之间觉察的核心。`;
+        }
+
+        // 能量总结
+        relationship += `\n\n🔋 能量总结：`;
+        if (reversals === 0) {
+          relationship += `全部正位——这是一手非常清晰的牌，能量流畅。请放心地按内在指引前行。`;
+        } else if (reversals === cardCount) {
+          relationship += `全部逆位——能量集中在内在转化阶段，外在的"成果"会延迟显现，但内在的成长正在加速。请耐心。`;
+        } else {
+          relationship += `${reversals}/${cardCount} 张逆位——既有顺流也有逆流，这是真实生活的常态。逆位的牌不是坏消息，而是被点亮的"功课"。`;
+        }
       }
-      
-      advice += `2. 行动建议：\n`;
-      
-      const future = cards.find(c => c.position === '未来' || c.position === '未来');
-      if (future && !future.isReversed) {
-        advice += `   · 未来能量积极，可以对未来保持信心\n`;
+
+      // ---------- 4. 整体建议 ----------
+      let advice = `${style.adviceIntro}\n\n`;
+      if (hasQuestion) {
+        advice += `针对你的问题"${question.trim()}"——\n\n`;
       }
-      
-      const present = cards.find(c => c.position === '现在' || c.position === '现在');
-      if (present && present.isReversed) {
-        advice += `   · 当前状态需要调整，建议给自己一些时间和空间\n`;
-      } else if (present) {
-        advice += `   · 现在是行动的好时机，可以积极推进\n`;
+
+      // 4.1 优先关注
+      advice += `🎯 第一优先：\n`;
+      const reversedCards = cards.filter(c => c.isReversed);
+      if (reversedCards.length > 0) {
+        const top = reversedCards[0];
+        advice += `把注意力先放在「${top.position}」的《${top.card.name_cn}》（逆位）上。这是你目前最核心的功课——${buildCardAction(top.card, true, topic)}。\n\n`;
+      } else {
+        const top = cards[0];
+        advice += `当前能量很顺，请把握「${top.position}」的《${top.card.name_cn}》所带来的开端——${buildCardAction(top.card, false, topic)}。\n\n`;
       }
-      
-      const past = cards.find(c => c.position === '过去' || c.position === '过去');
-      if (past && !past.isReversed) {
-        advice += `   · 过去的积累是你的资源，可以善加利用\n`;
+
+      // 4.2 短中长期具体行动
+      advice += `📅 行动节奏：\n\n`;
+      advice += `▸ 24 小时内：\n`;
+      advice += `  做一件最小但具体的事，用以回应「${cards[0].card.name_cn}」的提示。例如：写下你的真实感受、给某人发一条消息、列出你的可选项。\n\n`;
+      advice += `▸ 7 天内：\n`;
+      const midCard = cards[Math.min(1, cards.length - 1)];
+      advice += `  围绕「${midCard.card.name_cn}」展开一周的小型行动或观察。${midCard.isReversed ? '允许自己犯错与暂停，重要的是觉察而非完美。' : '保持节奏，每日推进一点。'}\n\n`;
+      if (cards.length >= 3) {
+        advice += `▸ 21~30 天内：\n`;
+        const longCard = cards[cards.length - 1];
+        advice += `  让「${longCard.card.name_cn}」成为你的方向锚点。${longCard.isReversed ? '若进展不如预期，回到第一张牌重新审视前提。' : '当出现犹豫时，回想这张牌为你描绘的画面。'}\n\n`;
       }
-      
-      advice += `\n3. 心态提醒：
-`;
-      advice += `   · 塔罗牌不是预言，而是帮助你更好理解当下的镜子\n`;
-      advice += `   · 最终的决定权始终在你手中\n`;
-      advice += `   · 无论结果如何，这都是你成长的一部分\n`;
-      
-      return advice;
+
+      // 4.3 心态提醒（按风格不同语气）
+      advice += `🧘 心态校准：\n`;
+      if (styleKey === 'mystic') {
+        advice += `· 牌是镜子，不是判决书\n· 命运给你方向，但选择权永远在你手中\n· 当迷茫时，重新洗牌——人生亦如是`;
+      } else if (styleKey === 'friend') {
+        advice += `· 别太逼自己，慢慢来\n· 这只是当下的牌，明天的你会更清楚\n· 我相信你可以，真的`;
+      } else if (styleKey === 'psychologist') {
+        advice += `· 塔罗的功能是激活潜意识中已存在的认知\n· 任何"建议"都需结合你独特的生命语境\n· 持续的自我观察比一次解读更有价值`;
+      } else if (styleKey === 'coach') {
+        advice += `· 知道≠做到，分清观察和行动\n· 截止日期 = 进度的最大杠杆\n· 一周后回来看牌，对比变化`;
+      } else {
+        advice += `· 你不必读懂所有的诗，只要被一句触动\n· 命运是水，你是岸；水会流，岸会变\n· 故事还在继续，下一页等你翻开`;
+      }
+      advice += style.endingNote;
+
+      // ---------- 5. 一句话总结 ----------
+      const cardNames = cards.map(c => c.card.name_cn).join(' · ');
+      let summary;
+      if (styleKey === 'mystic') {
+        summary = `🌙 星辰为你写下：${cardNames}——${reversals === 0 ? '光在你身后，路在你脚下' : '夜虽深，但你仍是自己的烛火'}。`;
+      } else if (styleKey === 'friend') {
+        summary = `💛 一句话：抽到的是 ${cardNames}。${reversals > cardCount/2 ? '最近确实不容易，但你扛得住。' : '看起来挺好的，按你的节奏来。'}`;
+      } else if (styleKey === 'psychologist') {
+        summary = `📋 投射结果概要：${cardNames}。建议结合此次解读，进行一次结构化的自我对话。`;
+      } else if (styleKey === 'coach') {
+        summary = `⚡ 牌：${cardNames}。重点：${reversedCards.length > 0 ? '先解决逆位的功课' : '保持节奏，加速执行'}。`;
+      } else {
+        summary = `🌹 ${cardNames}——这是今夜星河写给你的诗，请收下。`;
+      }
+
+      return { problem, cardsAnalysis, relationship, advice, summary };
     }
 
     function generateSummary(cards) {
