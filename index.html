@@ -3899,6 +3899,8 @@
       const style = STYLES[styleKey] || STYLES.mystic;
       const topic = detectTopic(question);
       const topicAngle = TOPIC_ANGLES[topic] || TOPIC_ANGLES.general;
+      const parsed = parseQuestion(question);
+      const perspective = parsed ? parsed.subject : 'self';
       const cardsText = cards.map((c, i) => {
         const ori = c.isReversed ? '逆位' : '正位';
         const meaning = c.isReversed ? c.card.meaning_reversed : c.card.meaning_upright;
@@ -3914,19 +3916,35 @@
         poet: '采用文学诗意的口吻：富有美感、意象绵密、句式有韵律，但保持解读的清晰。'
       };
 
+      // ★ 按视角定制 "角度指引"，避免 AI 对"他人/事件"类问题强行给"你要做什么"的建议
+      const perspectiveGuide = {
+        self: '这是关于求问者自身的问题——重点给出"求问者可以做什么"的行动建议。',
+        other: '这是关于"他人"的问题——不要替对方代言，而是描述对方当下能量状态、可能的倾向，并明确什么是求问者能影响的、什么是不能的。',
+        event: '这是关于"事件结果"（比赛、考试、面试等）的问题——描述事件走向的"势"（而不是精确比分/结果），区分求问者能控制（心态、准备）和不能控制（对方/临场）的部分。',
+        third_party: '这是关于"他人之间关系"的问题——不要替他们做决定，主要帮求问者理解他们的动态，以及求问者作为旁观者该如何自处。'
+      };
+      const viewGuide = perspectiveGuide[perspective] || perspectiveGuide.self;
+
       const system = `你是一位资深的塔罗占卜师，精通莱德-韦特塔罗体系。${styleGuide[styleKey]}
 
 你的任务是为求问者提供一份**详细、具体、有针对性**的塔罗解读。请注意：
 1. 解读必须紧扣求问者的具体问题（如果有），切忌泛泛而谈
 2. 每张牌的解读都要结合其在牌阵中的位置与正逆位
 3. 描述牌与牌之间的关系与叙事，而不是孤立分析
-4. 给出真正可操作的建议，包含短期（24小时）、中期（1周）、长期（1月）的具体行动
-5. 全程使用中文，避免AI腔，让人感到是真人在用心倾听与回应`;
+4. 给出真正可操作的建议——但必须匹配"问题视角"：${viewGuide}
+5. 当问题是关于"他人或事件"时：advice 字段请按【你能影响的部分 / 你无法控制的部分 / 观察哪些信号意味着趋势在变 / 避免的事 / 心态校准】五个小节组织；而不是套用"24 小时 / 本周 / 本月"的自我行动节奏。
+6. 全程使用中文，避免AI腔，让人感到是真人在用心倾听与回应`;
 
       const user = `## 求问者信息
 问题：${question ? `"${question}"` : '未提出具体问题（请围绕当下生命整体能量解读）'}
 ${question ? `识别到的主题领域：${topicAngle.focus}\n建议从这几个维度解读：${topicAngle.dimensions.join('、')}` : ''}
-
+${parsed ? `
+## 问题视角分析（由系统自动识别，供参考）
+- 主体：${parsed.subjectLabel}（${perspective === 'self' ? '求问者自己' : perspective === 'other' ? '某个他人' : perspective === 'event' ? '某件事' : '第三方关系'}）
+- 关心维度：${({outcome:'结果',feeling:'对方的心情/感受',timing:'时机',howto:'怎么做',will_happen:'会不会发生',general:'综合'})[parsed.dimension] || parsed.dimension}
+${parsed.timeframe ? `- 时间窗口：${parsed.timeframe}` : ''}
+- 可控程度：${parsed.controllability === 'high' ? '高（求问者能直接影响结果）' : parsed.controllability === 'low' ? '低（结果主要不由求问者决定）' : '中等'}
+` : ''}
 ## 抽到的牌（共 ${cards.length} 张）
 ${cardsText}
 
@@ -3934,10 +3952,10 @@ ${cardsText}
 请严格按以下 JSON 格式输出，**只输出 JSON、不要任何额外文字、不要 markdown 代码块包裹**：
 
 {
-  "problem": "你对求问者问题的理解和你的回应思路（200-300字）",
-  "cardsAnalysis": "对每张牌的深度解读，结合位置和正逆位，分别从象征意涵、能量本质、对求问者的具体含义、可执行的微小行动 四个层面展开（每张牌 200-300字，全部牌合计 ${cards.length * 250}字以上）",
+  "problem": "你对求问者问题的理解和你的直接回应——先给一个明确倾向（肯定/谨慎/中立），再讲理由。200-300字。",
+  "cardsAnalysis": "对每张牌的深度解读，结合位置和正逆位，以自然段落叙述（不是分点）。重点：结合求问者的具体问题给出针对性的话——如果问题是关于他人，就讲这张牌在 TA 身上代表的状态；如果问题是关于事件，就讲这张牌在事件进程中的意义。每张牌 150-250字。",
   "relationship": "牌与牌之间的叙事关系：用一段流畅的故事讲清楚从第一张到最后一张的能量发展轨迹（300-400字）",
-  "advice": "针对问题的具体建议，必须包含：①第一优先要做的事；②24小时内的微行动；③本周的核心动作；④本月的方向锚点；⑤心态校准（500-700字）",
+  "advice": "具体建议。${perspective === 'self' ? '包含：①一句话直答；②第一件事；③今天/本周/本月三阶段具体行动；④避免的事；⑤心态校准' : '包含：①一句话直答；②你能影响的部分；③你无法控制的部分；④观察信号（哪些迹象意味着趋势在变）；⑤避免的事；⑥心态校准'}。500-800字。",
   "summary": "一句话总结（30-60字，要有金句感）"
 }`;
 
@@ -4019,27 +4037,105 @@ ${cardsText}
     }
 
     // ============ 主题识别（根据问题） ============
+    // ============ 主题词表 + 视角（self=关于自己 / other=关于他人 / event=关于事件） ============
+    // 识别顺序：先识别更具体的主题（体育/考试/回归），再识别通用主题
     const TOPIC_KEYWORDS = {
-      love:    ['感情','爱情','喜欢','分手','复合','暗恋','男朋友','女朋友','伴侣','婚姻','结婚','约会','喜欢的人','心动','单身','恋爱','吵架','在一起'],
-      career:  ['工作','事业','职业','跳槽','升职','加薪','offer','面试','创业','项目','老板','同事','离职','晋升','发展','行业','转行','求职'],
-      money:   ['钱','财务','收入','投资','理财','负债','买房','贷款','破产','花钱','存钱','财富','经济','支出','赚钱'],
-      study:   ['学习','考试','学业','留学','考研','高考','学校','成绩','论文','申请','专业','毕业','补习','保研'],
-      health:  ['健康','身体','疾病','失眠','焦虑','抑郁','减肥','运动','心理','情绪','压力','疲惫','睡眠','医生'],
-      decision:['选择','决定','要不要','该不该','犹豫','纠结','两难','到底','取舍','抉择','怎么办','是否'],
-      self:    ['自己','成长','迷茫','方向','人生','使命','意义','目标','梦想','改变','自我','认识自己']
+      // ---- 关于"事件结果"类（第三人称视角） ----
+      sports:     { kw: ['比赛','球队','主队','客队','赛事','夺冠','晋级','半决赛','决赛','输赢','对阵','比分','联赛','淘汰赛','总决赛','冠军','击败','碾压','逆转','黑马','发挥','状态','出战','首发','替补','主场','客场','下半场','加时','点球'], perspective: 'event', subtype: 'sports' },
+      exam:       { kw: ['考试','高考','考研','中考','期末','期中','模拟','押题','四六级','雅思','托福','gre','编制考试','教资','公务员考试','国考','省考','能过','能考上','分数','上岸','能否通过','能不能过'], perspective: 'event', subtype: 'exam' },
+      interview:  { kw: ['面试','终面','复试','群面','笔试','hr面','技术面','能不能拿到','会不会录用','会不会收到offer','能不能入职','面试官'], perspective: 'event', subtype: 'interview' },
+      lottery:    { kw: ['中奖','抽奖','彩票','开奖','运气','摇号','抽签','能不能抽中','能中','能抽到'], perspective: 'event', subtype: 'lottery' },
+      application:{ kw: ['能不能申请','申请能过','录取','招生','签证','批复','通过','申请','审批','批下来','能批'], perspective: 'event', subtype: 'application' },
+
+      // ---- 关于"他人"类（第二/三人称视角） ----
+      otherPerson:{ kw: ['他现在','她现在','TA现在','他在想','她在想','TA在想','他喜不喜欢','她喜不喜欢','他爱','她爱','TA喜欢','他对我','她对我','TA对我','他会不会','她会不会','TA会不会','对方','那个人','他是不是','她是不是','他想不想','她想不想','他在干嘛','她在干嘛','他心里','她心里'], perspective: 'other', subtype: 'other_feel' },
+      reunion:    { kw: ['能不能联系','会不会联系','会回复','会回消息','回我','主动联系','重新联系','还会找我','重逢','再见面','破冰','和好','能复合','会不会复合','能不能回到以前','能不能挽回','挽回','回头'], perspective: 'other', subtype: 'reunion' },
+      thirdParty: { kw: ['他们会','他们之间','他们的关系','父母会','爸妈会','同事之间','朋友之间','队友之间','家人会','会和好','会不会吵架','会不会闹翻','会不会分开','会不会离婚'], perspective: 'other', subtype: 'third_party' },
+
+      // ---- 关于"自己"类（保留原主题，第一人称视角） ----
+      love:       { kw: ['感情','爱情','恋爱','分手','暗恋','男朋友','女朋友','伴侣','婚姻','结婚','约会','心动','单身','吵架','在一起'], perspective: 'self', subtype: 'love' },
+      career:     { kw: ['工作','事业','职业','跳槽','升职','加薪','offer','创业','项目','老板','同事','离职','晋升','发展','行业','转行','求职','项目进展'], perspective: 'self', subtype: 'career' },
+      money:      { kw: ['钱','财务','收入','投资','理财','负债','买房','贷款','破产','花钱','存钱','财富','经济','支出','赚钱','生意'], perspective: 'self', subtype: 'money' },
+      study:      { kw: ['学习','学业','留学','学校','成绩','论文','专业','毕业','补习','保研','读书','自学'], perspective: 'self', subtype: 'study' },
+      health:     { kw: ['健康','身体','疾病','失眠','焦虑','抑郁','减肥','心理','情绪','压力','疲惫','睡眠','医生','恢复'], perspective: 'self', subtype: 'health' },
+      decision:   { kw: ['选择','决定','要不要','该不该','犹豫','纠结','两难','到底','取舍','抉择','怎么办','是否'], perspective: 'self', subtype: 'decision' },
+      self:       { kw: ['自己','成长','迷茫','方向','人生','使命','意义','目标','梦想','改变','自我','认识自己'], perspective: 'self', subtype: 'self' }
     };
 
+    // 识别顺序：按上面声明的顺序，命中即止（所以"事件/他人"比通用类优先）
     function detectTopic(question) {
       if (!question) return null;
       const q = question.trim();
       if (!q) return null;
-      for (const [topic, words] of Object.entries(TOPIC_KEYWORDS)) {
-        if (words.some(w => q.includes(w))) return topic;
+      for (const [topic, conf] of Object.entries(TOPIC_KEYWORDS)) {
+        if (conf.kw.some(w => q.includes(w))) return topic;
       }
       return 'general';
     }
 
+    function getTopicMeta(topic) {
+      if (TOPIC_KEYWORDS[topic]) return TOPIC_KEYWORDS[topic];
+      return { perspective: 'self', subtype: 'general' };
+    }
+
+    // ============ 问题深度解析：主体、关心维度、时间窗口 ============
+    function parseQuestion(question) {
+      if (!question) return null;
+      const q = question.trim();
+      if (!q) return null;
+
+      // 1. 识别主体（问的是谁 / 什么）
+      let subject = 'self';                    // self / other / event / third_party
+      let subjectLabel = '你自己';
+      if (/^(他|她|TA|ta|Ta|对方|那个人)/.test(q) || /(他|她|TA)(现在|心里|在想|喜不喜欢|会不会|是不是|对我)/.test(q)) {
+        subject = 'other';
+        subjectLabel = q.match(/(他|她|TA)/) ? `TA（${q.match(/(他|她|TA)/)[0]}）` : 'TA';
+      } else if (/(比赛|球队|主队|赛事|考试|面试|抽奖|开奖|摇号|申请|项目(进展|结果))/.test(q)) {
+        subject = 'event';
+        // 抽取事件关键词
+        const m = q.match(/(比赛|球队|主队|客队|赛事|考试|面试|抽奖|开奖|摇号|申请)/);
+        subjectLabel = m ? `这件事（${m[0]}）` : '这件事';
+      } else if (/(他们|双方|两人|二人|父母|爸妈|同事们|朋友们)/.test(q)) {
+        subject = 'third_party';
+        const m = q.match(/(他们|双方|两人|二人|父母|爸妈|同事们|朋友们)/);
+        subjectLabel = m ? `他们（${m[0]}）` : '他们';
+      }
+
+      // 2. 关心的维度（结果 / 心情 / 时机 / 方法 / 是否发生）
+      let dimension = 'general';
+      if (/(结果|会不会赢|能不能过|能不能中|会怎样|会如何|走向|结局|会赢|会输|会成功|会失败|能考上)/.test(q)) {
+        dimension = 'outcome';
+      } else if (/(心里|心情|想什么|在想|感受|怎么看我|对我的态度|喜欢|讨厌|生气|在意)/.test(q)) {
+        dimension = 'feeling';
+      } else if (/(什么时候|何时|多久|还要多久|等多久|近期|最近|很快|慢慢)/.test(q)) {
+        dimension = 'timing';
+      } else if (/(怎么|如何|办法|方法|怎样做|咋办)/.test(q)) {
+        dimension = 'howto';
+      } else if (/(会不会|能不能|是不是|是否|会发生|会出现)/.test(q)) {
+        dimension = 'will_happen';
+      }
+
+      // 3. 时间窗口
+      let timeframe = null;
+      if (/(今晚|今天|今日|现在|此刻|马上)/.test(q)) timeframe = 'today';
+      else if (/(明天|明日)/.test(q)) timeframe = 'tomorrow';
+      else if (/(这周|本周|这星期|一周内|7天)/.test(q)) timeframe = 'week';
+      else if (/(这个月|本月|一个月|30天)/.test(q)) timeframe = 'month';
+      else if (/(今年|年底|明年)/.test(q)) timeframe = 'year';
+      else if (/(最近|近期|短期)/.test(q)) timeframe = 'soon';
+
+      // 4. 控制力判断：用户能影响多少
+      let controllability = 'mixed';
+      if (subject === 'event' || subject === 'other' || subject === 'third_party') controllability = 'low';
+      if (subject === 'self') controllability = 'high';
+      if (dimension === 'outcome' && (subject === 'event' || subject === 'other')) controllability = 'low';
+      if (dimension === 'howto') controllability = 'high';
+
+      return { subject, subjectLabel, dimension, timeframe, controllability, raw: q };
+    }
+
     const TOPIC_ANGLES = {
+      // 关于自己
       love:    { focus: '感情关系', dimensions: ['你的内心需求','对方的能量','关系的现状','可能的走向'] },
       career:  { focus: '事业发展', dimensions: ['当前的能量与资源','外部的机遇与阻碍','你的应对方式','可能的发展路径'] },
       money:   { focus: '财务状况', dimensions: ['现有的财务能量','潜在的风险','机遇与可能','你需要培养的财务习惯'] },
@@ -4047,7 +4143,20 @@ ${cardsText}
       health:  { focus: '身心健康', dimensions: ['身体层面','情绪层面','潜意识层面','调整方向'] },
       decision:{ focus: '抉择难题', dimensions: ['选项A的能量','选项B的能量','你内心真实倾向','遵循内心的代价与回报'] },
       self:    { focus: '自我探索', dimensions: ['你目前的位置','内在的呼唤','需要面对的功课','可能的成长方向'] },
-      general: { focus: '当前生命状态', dimensions: ['整体能量','核心议题','当下的功课','未来的可能'] }
+
+      // 关于他人
+      otherPerson: { focus: 'TA 的状态', dimensions: ['TA 当前的能量状态','TA 对这件事的感受','TA 可能的行动倾向','你们之间的能量交互'] },
+      reunion:     { focus: '联系/回归的可能性', dimensions: ['对方当前的状态','推动这件事的内在动能','阻碍或时机问题','你能主动做与不能做的部分'] },
+      thirdParty:  { focus: '他人之间的关系', dimensions: ['双方当下的能量','两者之间的张力或默契','可能的走向','你作为旁观者的角色'] },
+
+      // 关于事件
+      sports:      { focus: '这场比赛的走向', dimensions: ['你关注一方的状态','对手/对方的状态','比赛进程的能量','最终结果的倾向'] },
+      exam:        { focus: '这次考试/测评的结果', dimensions: ['你目前的准备状态','外部阻力或支持','发挥时的状态','最终的倾向'] },
+      interview:   { focus: '这次面试的走向', dimensions: ['你准备的能量','面试方对你的感受','双方契合度','最终录用的倾向'] },
+      lottery:     { focus: '这次运气 / 抽奖的结果', dimensions: ['当下的运势能量','你期待与实际的距离','可能的惊喜或失望','从结果中能学到什么'] },
+      application: { focus: '这次申请的结果', dimensions: ['你材料或资质的能量','审批方的态度','外部大环境','最终通过的倾向'] },
+
+      general:     { focus: '当前生命状态', dimensions: ['整体能量','核心议题','当下的功课','未来的可能'] }
     };
 
     // ============ 主题通用兜底话术（无任何细节命中时使用） ============
@@ -4066,6 +4175,27 @@ ${cardsText}
                  rev: '针对抉择，这张牌提示你目前的纠结是因为信息不全或恐惧主导，先别做决定，去获取一个关键事实。' },
       self:    { up: '在自我成长层面，这张牌提示你已经到了一个整合的节点，去做那件"你知道该做但一直没开始"的事。',
                  rev: '在自我成长层面，这张牌提示你正在用忙碌或逃避回避一个真正的功课，它不会自行消失。' },
+
+      // ---- 关于他人 ----
+      otherPerson: { up: '关于 TA 的状态——TA 此刻是开放、主动、能量上升的状态，对你或这件事持正面态度。',
+                     rev: 'TA 此刻处于封闭、消极或被其他事情分心的状态，你现在的表达可能无法被完整接收，需要等待时机。' },
+      reunion:     { up: '对方重新出现或联系你的能量是在酝酿的；但这不是马上发生的事，需要一段自然的时间窗口。',
+                     rev: '当前联系的窗口是关闭的；与其等待对方主动，不如先把自己的状态调整好，强行破冰只会把事情推得更远。' },
+      thirdParty:  { up: '他们之间的能量是流动的、可调和的；冲突会过去，关系会重新找到平衡。',
+                     rev: '他们之间有较深的裂痕或未解决的事；短期内难以和解，你作为旁观者最好保持距离不要介入。' },
+
+      // ---- 关于事件 ----
+      sports:      { up: '你关注的一方状态不错，能量是上升的；这场比赛倾向于有利于他们，但仍需关注临场变化。',
+                     rev: '你关注的一方状态起伏或被对手压制；这场比赛难度较大，但不完全没机会——逆位往往代表反转的可能。' },
+      exam:        { up: '你此刻的准备程度和心态都在线，结果倾向于通过或达到预期——但最后几天的稳定比冲刺更重要。',
+                     rev: '准备上或心态上有未解决的漏洞，结果有不确定性；现在能做的是查漏补缺 + 把状态调整到稳定。' },
+      interview:   { up: '你和这个机会之间的能量是合拍的，面试方会对你有积极印象——保持真实、别过度表现。',
+                     rev: '契合度不够或面试方有犹豫；即使过了，也要评估这是不是你真正想要的——别只为了"拿到 offer"而忽略匹配度。' },
+      lottery:     { up: '运势能量在你这一边，有小幅惊喜的可能；但别把期待放得过高，保持"玩"的心态。',
+                     rev: '近期运势平淡或偏弱，这次不是你的窗口；把期待降下来，这次不中也没什么损失。' },
+      application: { up: '你的材料或资质是被看见的，通过的倾向较高；但不要因此松懈，follow-up 和主动沟通仍然重要。',
+                     rev: '审批过程中有阻力或变数，不一定代表拒绝，可能是需要补材料或等待；耐心 + 主动跟进。' },
+
       general: { up: '整体而言，这张牌显示能量正在朝有利方向流动，你需要做的是不挡住它。',
                  rev: '整体而言，这张牌显示有阻滞或反向的张力，是时候停下来重新看清情况。' }
     };
@@ -4086,7 +4216,24 @@ ${cardsText}
         decision:{ up: '抉择上，倾向那个让你想立刻开始的选项——直觉不是冲动，是你综合过的答案。',
                    rev: '这次的犹豫来自情绪而非理性，先冷静 48 小时再决定，别让冲动替你选。' },
         self:    { up: '你的生命力正被召唤，去做那件"想了很久但没开始"的事——今天就买第一本书或发第一条消息。',
-                   rev: '你在用瞎忙代替真正的成长，找一个下午彻底停下来，写下你真正想要的是什么。' }
+                   rev: '你在用瞎忙代替真正的成长，找一个下午彻底停下来，写下你真正想要的是什么。' },
+        // 他人/事件
+        otherPerson:{ up: 'TA 此刻热情饱满、能量外放，对你或这件事抱有积极主动的态度。',
+                      rev: 'TA 被某种急躁或愤怒占据，不太听得进别人的话，现在不是靠近的好时机。' },
+        reunion:    { up: '对方内心有主动联系你的冲动，但被某件事绊住，给它一点时间。',
+                      rev: '对方在气头上或在赌气，越推越远。别发太多消息，反而保持距离能让火慢慢降。' },
+        thirdParty: { up: '他们之间有热烈的互动，关系在升温或火花四射。',
+                      rev: '他们之间在暗暗较劲或正面冲突，你别当和事佬，会两边不讨好。' },
+        sports:     { up: '队伍/选手处于斗志高昂、主动出击的状态，这场比赛会偏进攻性、节奏快。',
+                      rev: '队伍/选手这场发挥不稳，可能情绪化或打急了，需要教练或队长压住节奏。' },
+        exam:       { up: '你准备上有冲劲，只要临场不慌，发挥能超出平时水平。',
+                      rev: '你最近被焦虑和盲目刷题消耗，状态并不好——今晚先睡好比多刷一套卷重要。' },
+        interview:  { up: '你面试时会表现出活力和自信，面试方会被你的热情打动。',
+                      rev: '你可能过度准备导致表达用力过猛，反而显得不自然——放松点，做自己。' },
+        lottery:    { up: '短期有"一击即中"的小运气，敢出手会有惊喜。',
+                      rev: '不要冲动下注，今天的冲动会变成明天的后悔。' },
+        application:{ up: '你的申请材料里有"亮眼的部分"能让对方眼前一亮，主动跟进一下有加成。',
+                      rev: '材料中有一处你自己知道不够完美，建议补充再提交，别裸投。' }
       },
       cups: {
         love:    { up: '感情的核心是情感连结本身，去表达一次你从未说过的柔软——无论回应如何，你会更接近真实的自己。',
@@ -4102,7 +4249,24 @@ ${cardsText}
         decision:{ up: '抉择上，倾向那个"感觉对"的选项——这次你的感受比 Excel 更聪明。',
                    rev: '别在情绪低谷时做重大决定，先把状态恢复到"平静"再回来回答这个问题。' },
         self:    { up: '你正在重新连接被忽视的情感部分——给内在的自己一次真正的陪伴。',
-                   rev: '你在用忙碌掩盖某种悲伤或失落，承认它才能穿越它。' }
+                   rev: '你在用忙碌掩盖某种悲伤或失落，承认它才能穿越它。' },
+        // 他人/事件
+        otherPerson:{ up: 'TA 此刻情感丰富、能感受到你的真诚，是靠近的好时机。',
+                      rev: 'TA 被某种情绪淹没（可能不是因为你），别把 TA 的沉默误读为针对你。' },
+        reunion:    { up: '对方心里其实还留有一份柔软，对你的记忆不是全部负面的，时机到了自然会有回应。',
+                      rev: '对方还陷在旧伤或失望里，现在联系只会激活那份情绪，等 TA 心里真的平静了再说。' },
+        thirdParty: { up: '他们之间的情感联结还在，哪怕表面冷淡，底下有未熄灭的在意。',
+                      rev: '他们之间有未处理的情感积怨，短期不会自然和好，需要时间和第三方契机。' },
+        sports:     { up: '队伍的精神气场和凝聚力很好，他们会为彼此拼尽全力，这种氛围本身就是胜负手。',
+                      rev: '队伍内部士气有裂痕或主力情绪低落，这种不稳定会影响场上执行。' },
+        exam:       { up: '你的心态稳定、有信心，这份情绪基础本身就是加分项。',
+                      rev: '情绪波动比知识点更影响发挥，今晚不要再看题了，做点让自己平静的事。' },
+        interview:  { up: '你和对方会有很自然的"对味"感，一次走心的交流胜过十次技术答题。',
+                      rev: '你被情绪或紧张牵着走，容易讲多或偏离重点——提前列 3 个你想表达的核心点。' },
+        lottery:    { up: '带着平和愉悦的心情去做这件事，小惊喜会自然来。',
+                      rev: '别带着"用这个来安慰自己"的期待——这种心态会让你失望。' },
+        application:{ up: '你材料里表达出的诚意会打动审核方，真诚比完美更重要。',
+                      rev: '如果材料里带着焦虑或讨好的痕迹，反而扣分；重写时先把情绪放一放。' }
       },
       swords: {
         love:    { up: '感情需要一次坦诚的对话，把你回避的话题摆上桌面——真相会让关系要么更近要么更清晰地结束。',
@@ -4118,7 +4282,24 @@ ${cardsText}
         decision:{ up: '抉择上，用一张纸列出每个选项的真实代价与收益——答案会从纸上浮现。',
                    rev: '你已经知道答案，只是不敢承认——今晚写下"如果没有恐惧，我会怎么选"。' },
         self:    { up: '是时候说一句真话——对别人或对自己——哪怕它会让某些事情结束。',
-                   rev: '你在用自我批判代替成长，今天允许自己"只是尽力了"而不是"又搞砸了"。' }
+                   rev: '你在用自我批判代替成长，今天允许自己"只是尽力了"而不是"又搞砸了"。' },
+        // 他人/事件
+        otherPerson:{ up: 'TA 此刻很清醒、很理性，愿意就事论事；这是沟通关键问题的好时机。',
+                      rev: 'TA 陷在反复思考或自我内耗里，现在讲道理只会让 TA 更防御；换个时间。' },
+        reunion:    { up: '对方正在做权衡，不是不想联系，而是在想"怎么联系、说什么"，给 TA 空间。',
+                      rev: '对方已经在心里做了"切断"的决定；再试探只会让自己更受伤，先把自己稳住。' },
+        thirdParty: { up: '他们之间在进行关键的对话或澄清，这次能把很多未说清的事摊开。',
+                      rev: '他们之间的冲突已经到了言语伤害的程度，你别站队、别评论，让时间来处理。' },
+        sports:     { up: '这场比赛的胜负更取决于战术执行和临场判断，谁更冷静谁赢。',
+                      rev: '场上会有争议判罚或情绪化事件，比赛过程会比预想的更复杂，不看到终场哨别下结论。' },
+        exam:       { up: '你的思路清晰，逻辑推理和结构化题目会是你的强项。',
+                      rev: '你被过度思考卡住了——考场上遇到难题先跳过，别在一道题上钻死。' },
+        interview:  { up: '你的逻辑和表达会让面试方印象深刻，准备好 STAR 结构答题就很稳。',
+                      rev: '你最近想太多、过度自我怀疑，正式面试前做 1 次模拟会显著改善紧张。' },
+        lottery:    { up: '理性判断：这次你能掌控的部分有限，但做了合理选择就够了。',
+                      rev: '不要被"分析"过度操控，有些事就是概率，再精密的推理也没用。' },
+        application:{ up: '材料的逻辑结构清晰，审核方能迅速看懂你的亮点，这很关键。',
+                      rev: '材料里有几处措辞歧义或重复，请一个外人帮你过一遍再交。' }
       },
       pentacles: {
         love:    { up: '稳定关系需要具体行动来滋养——一次计划好的约会、一份用心挑选的小礼物，比宏大誓言更有力。',
@@ -4134,7 +4315,24 @@ ${cardsText}
         decision:{ up: '抉择上，倾向那个"能长期复利"的选项——短期爽感不如复利稳定。',
                    rev: '不要被短期利益诱惑去做违背长期价值的选择，三年后你会感谢自己忍住。' },
         self:    { up: '成长是具体的——不是读多少书、打多少卡，而是生活中那些"你做到了"的小事。',
-                   rev: '你把自我价值和某个外部成就（收入/头衔/关系）捆绑太紧，松一松，你本身就是价值。' }
+                   rev: '你把自我价值和某个外部成就（收入/头衔/关系）捆绑太紧，松一松，你本身就是价值。' },
+        // 他人/事件
+        otherPerson:{ up: 'TA 此刻很踏实、很落地，会用实际行动而不是嘴上承诺来表达。',
+                      rev: 'TA 最近被现实压力（钱/工作/家庭）搞得很累，对情感或关系的投入会下降，不是不在意你。' },
+        reunion:    { up: '对方在慢慢规划如何重新开始，过程会缓慢但扎实，不是冲动型的联系。',
+                      rev: '现实层面的阻碍（距离、收入、家庭意见）使这件事推进困难，需要先解决具体问题。' },
+        thirdParty: { up: '他们之间的关系建立在务实基础上，短期磕碰不会影响根基。',
+                      rev: '他们之间在钱、责任、分工上出现不对等，需要坐下来谈具体安排，不是情绪话。' },
+        sports:     { up: '队伍体能储备和执行力扎实，打常规时段的稳定发挥是他们的优势。',
+                      rev: '队伍近期累积伤病或训练不足的问题暴露，要做好苦战准备。' },
+        exam:       { up: '基础扎实的复习正在开花结果，保持每天稳定的节奏就能拿到稳稳的分数。',
+                      rev: '基础题失分会成为关键，别只追难题——前三分之一的简单题请不要大意。' },
+        interview:  { up: '你的履历和作品是硬通货，面试官会被你的积累吸引——把简历里每个项目的具体成果准备好。',
+                      rev: '经验上有硬伤或明显的断层，不要掩盖——诚实说明并展示你在弥补的部分，反而更有分。' },
+        lottery:    { up: '与其说是运气，不如说是"你踏实参与的结果"——这类型的机会对你有利。',
+                      rev: '不要把辛苦赚的钱投到没有把握的事上，本金比短期收益重要。' },
+        application:{ up: '你的材料里有可验证的硬实力（项目/数据/成果），这在审核里占最大权重。',
+                      rev: '材料偏向描述而不是成果，请把"我做了什么"改为"我做到了什么（量化结果）"。' }
       }
     };
 
@@ -4326,34 +4524,64 @@ ${cardsText}
       const hasQuestion = question && question.trim().length > 0;
       const qTrim = hasQuestion ? question.trim() : '';
       const topic = detectTopic(question);
+      const topicMeta = getTopicMeta(topic);
       const topicAngle = TOPIC_ANGLES[topic] || TOPIC_ANGLES.general;
+      const parsed = parseQuestion(qTrim);                      // ★ 新增：主体/维度/时间/可控性
+      const perspective = parsed ? parsed.subject : 'self';     // self / other / event / third_party
       const cardCount = cards.length;
       const reversals = cards.filter(c => c.isReversed).length;
       const reversedCards = cards.filter(c => c.isReversed);
       const majors = cards.filter(c => c.card.arcana === 'major').length;
 
-      // 倾向性判定：综合正逆位、关键牌、花色等给出一个"是/否/待定"的初步结论
-      const verdict = judgeVerdict(cards, topic, qTrim);
-
-      // 问题类型识别（是/否 类、要不要类、会怎样类、如何做类）
+      // 倾向性判定（把 parsed 传进去，让它考虑视角）
+      const verdict = judgeVerdict(cards, topic, qTrim, parsed);
       const qType = classifyQuestionType(qTrim);
 
-      // ---------- 1. 问题理解（先给结论，再讲依据） ----------
+      // ---------- 1. 问题理解 ----------
       let problem = style.problemPrefix;
       problem += `${style.salutation}：\n\n`;
       if (hasQuestion) {
         problem += `你的问题：\n"${qTrim}"\n\n`;
+
+        // ★ 按视角给不同的开场
+        if (perspective === 'event') {
+          problem += `我看懂了——这是一个关于"${parsed.subjectLabel}"的提问，你关心的是它的${dimensionLabel(parsed.dimension)}。\n\n`;
+          problem += `首先要说清楚一件事：塔罗在回答"事件走向"类问题时，看的是**能量趋势**，而不是精确的"几比几"。牌告诉你的是这件事目前的"势"——顺还是阻、强还是弱、稳还是乱。\n\n`;
+        } else if (perspective === 'other') {
+          problem += `我看懂了——这不是一个关于"你"的问题，而是关于"${parsed.subjectLabel}"的。\n\n`;
+          problem += `这种问题我要诚实告诉你：塔罗看得到 TA 的**能量状态**（比如情绪、倾向、当下在关注什么），但看不到 TA 的具体想法。牌展示的是 TA 现在"散发出的气场"，而不是 TA 脑子里的 MP3。\n\n`;
+        } else if (perspective === 'third_party') {
+          problem += `我看懂了——你在问的是"${parsed.subjectLabel}"之间的关系或动态。\n\n`;
+          problem += `作为旁观者提问，牌能告诉你两者之间的能量场（融洽/张力/分离），但这份解读更适合帮你看清**自己要不要介入/如何自处**，而不是替他们做决定。\n\n`;
+        } else {
+          problem += `这是一个关于你自己的"${topicAngle.focus}"的提问。\n\n`;
+        }
+
         problem += `我的回答是——\n`;
         problem += `${verdict.summary}\n\n`;
         problem += `理由：${verdict.reason}\n\n`;
+
+        // 按问题类型给针对性收尾
         if (qType === 'yesno' || qType === 'should') {
-          problem += `如果你在等一个明确的"可以/不可以"，这副牌倾向的答案是：${verdict.label}。但请记住，这个倾向会随着你的选择而改变——牌给的是"此刻能量走向"，不是不可逆的判决。`;
+          problem += `如果你想要一个明确的"可以/不可以"，这副牌倾向的答案是：${verdict.label}。`;
+          if (perspective !== 'self') {
+            problem += `但注意——这个结果里有你不能完全控制的部分，不要把它当成"我的努力决定一切"。`;
+          } else {
+            problem += `牌给的是此刻的能量走向，会随着你的选择而改变，不是判决。`;
+          }
         } else if (qType === 'willhappen') {
-          problem += `关于"会不会发生"——这副牌显示的画面是：${verdict.outlook}。但结果不是命中注定，它取决于你在接下来几周的关键选择。`;
+          problem += `关于"会不会发生"——这副牌显示的画面是：${verdict.outlook}`;
+          if (perspective === 'event') {
+            problem += `注意：**"势"不等于"果"**——好的势遇到差的临场会翻车，差的势也可能被一次爆发翻盘，看到终场哨之前都别完全下结论。`;
+          } else if (perspective === 'other') {
+            problem += `别把牌显示的 TA 的状态误读为 TA 的承诺——能量会变，请继续观察 TA 的实际行动而不是你对这副牌的解读。`;
+          } else {
+            problem += `但结果不是命中注定，它取决于你在接下来几周的关键选择。`;
+          }
         } else if (qType === 'howto') {
-          problem += `关于"怎么做"——这副牌给出的路径是：${verdict.path}。我会在后面的"整体建议"里把这条路径拆成具体可做的步骤。`;
+          problem += `关于"怎么做"——这副牌给出的路径是：${verdict.path}。我会在后面的"整体建议"里把它拆成具体可做的步骤。`;
         } else {
-          problem += `关于"${topicAngle.focus}"这个层面——${verdict.outlook}`;
+          problem += `关于"${topicAngle.focus}"——${verdict.outlook}`;
         }
       } else {
         problem += `你没有提出具体问题，那就让这 ${cardCount} 张牌告诉你：此刻你生命中真正要紧的事是什么。\n\n`;
@@ -4365,72 +4593,82 @@ ${cardsText}
       let cardsAnalysis = `${style.themeIntro}\n\n`;
       cardsAnalysis += `牌阵总览：${cardCount} 张牌中，正位 ${cardCount - reversals} 张、逆位 ${reversals} 张；大阿卡那 ${majors} 张、小阿卡那 ${cardCount - majors} 张。`;
       if (majors >= Math.ceil(cardCount / 2)) {
-        cardsAnalysis += `大阿卡那过半，说明当下你遇到的不是一个日常问题，而是会影响中长期走向的命题。`;
+        cardsAnalysis += `大阿卡那过半，说明这是一个会影响中长期走向的命题，不是日常小事。`;
       } else {
-        cardsAnalysis += `小阿卡那为主，问题集中在具体生活层面，可以用具体动作解决。`;
+        cardsAnalysis += `小阿卡那为主，问题集中在具体层面，可以用具体动作应对。`;
       }
-      // 花色偏向
       const suitLabels = { wands:'权杖（行动/激情）', cups:'圣杯（情感/关系）', swords:'宝剑（思考/沟通）', pentacles:'钱币（物质/务实）' };
       const suitCounts = {};
       cards.forEach(c => { if (c.card.suit) suitCounts[c.card.suit] = (suitCounts[c.card.suit] || 0) + 1; });
       const dominantSuit = Object.entries(suitCounts).sort((a, b) => b[1] - a[1])[0];
       if (dominantSuit && dominantSuit[1] >= 2) {
         cardsAnalysis += `${suitLabels[dominantSuit[0]]}占比突出——`;
-        const suitHint = {
-          wands: '你正处于需要主动"做事"的阶段，情绪和思考都要为行动让路。',
-          cups:  '核心议题是情感与人际，先照顾好感受，理性才跟得上。',
-          swords:'需要清晰的思考与沟通，模糊地带正在消耗你。',
-          pentacles:'落到具体的钱、资源、身体上来，别在空想里转圈。'
-        };
+        // ★ 花色提示按视角差异化
+        const suitHint = (perspective === 'event' || perspective === 'other')
+          ? {
+              wands: '这件事/这个人的能量是积极主动、有冲劲的，节奏会偏快。',
+              cups:  '这件事/这个人的能量以情感和直觉为主导，逻辑不是主要推手。',
+              swords:'这件事/这个人的能量偏向理性分析与决断，过程会有明确的转折点。',
+              pentacles:'这件事/这个人的能量踏实务实，节奏慢但稳，短期内不会有戏剧性变化。'
+            }
+          : {
+              wands: '你正处于需要主动"做事"的阶段，情绪和思考都要为行动让路。',
+              cups:  '核心议题是情感与人际，先照顾好感受，理性才跟得上。',
+              swords:'需要清晰的思考与沟通，模糊地带正在消耗你。',
+              pentacles:'落到具体的钱、资源、身体上来，别在空想里转圈。'
+            };
         cardsAnalysis += suitHint[dominantSuit[0]] + '\n\n';
       } else {
         cardsAnalysis += '\n\n';
       }
       cardsAnalysis += `──────────\n\n`;
-      // 逐张深度解读
       cards.forEach((c, i) => {
         cardsAnalysis += buildCardDeepRead(c, i, style, topic) + `\n\n`;
       });
 
-      // ---------- 3. 牌与牌之间的发展逻辑（自然段落叙事） ----------
-      let relationship = buildNarrative(cards, style, topic, reversals);
+      // ---------- 3. 牌与牌之间的发展逻辑 ----------
+      let relationship = buildNarrative(cards, style, topic, reversals, perspective, parsed);
 
-      // ---------- 4. 整体建议（直接回应问题 + 具体可做动作） ----------
+      // ---------- 4. 整体建议（★ 按视角切换结构） ----------
       let advice = `${style.adviceIntro}\n\n`;
       if (hasQuestion) {
-        advice += `针对"${qTrim}"，我给你这样一份具体方案——\n\n`;
+        advice += `针对"${qTrim}"——\n\n`;
       }
 
       // 4.1 一句话直答
-      advice += `【一句话直答】\n`;
-      advice += `${verdict.oneSentence}\n\n`;
+      advice += `【一句话直答】\n${verdict.oneSentence}\n\n`;
 
-      // 4.2 第一优先要做的事
-      advice += `【第一件事】\n`;
-      const topCard = reversedCards.length > 0 ? reversedCards[0] : cards[0];
-      const topAction = buildCardAction(topCard.card, topCard.isReversed, topic);
-      advice += `聚焦在「${topCard.position}」的《${topCard.card.name_cn}》（${topCard.isReversed ? '逆位' : '正位'}）——`;
-      advice += `${topAction}。`;
-      advice += `这是整副牌里最不该被忽略的那张。\n\n`;
+      // 4.2 按视角分发不同的建议结构
+      if (perspective === 'self') {
+        // 第一人称视角：保留原来的结构
+        advice += `【第一件事】\n`;
+        const topCard = reversedCards.length > 0 ? reversedCards[0] : cards[0];
+        const topAction = buildCardAction(topCard.card, topCard.isReversed, topic);
+        advice += `聚焦在「${topCard.position}」的《${topCard.card.name_cn}》（${topCard.isReversed ? '逆位' : '正位'}）——${topAction}。这是整副牌里最不该被忽略的那张。\n\n`;
 
-      // 4.3 24h / 7天 / 30天 具体动作
-      advice += `【具体行动节奏】\n`;
-      advice += `▸ 今天（24 小时内）：\n`;
-      advice += `  ${buildConcreteAction(cards[0], topic, 'today')}\n\n`;
-      advice += `▸ 本周（7 天内）：\n`;
-      const midCard = cards[Math.min(1, cards.length - 1)];
-      advice += `  ${buildConcreteAction(midCard, topic, 'week')}\n\n`;
-      if (cards.length >= 3) {
-        advice += `▸ 本月（30 天内）：\n`;
-        const longCard = cards[cards.length - 1];
-        advice += `  ${buildConcreteAction(longCard, topic, 'month')}\n\n`;
+        advice += `【具体行动节奏】\n`;
+        advice += `▸ 今天（24 小时内）：\n  ${buildConcreteAction(cards[0], topic, 'today')}\n\n`;
+        const midCard = cards[Math.min(1, cards.length - 1)];
+        advice += `▸ 本周（7 天内）：\n  ${buildConcreteAction(midCard, topic, 'week')}\n\n`;
+        if (cards.length >= 3) {
+          advice += `▸ 本月（30 天内）：\n  ${buildConcreteAction(cards[cards.length - 1], topic, 'month')}\n\n`;
+        }
+      } else {
+        // ★ 关于他人/事件/第三方：改成"能做的 / 不能做的 / 观察信号"三栏
+        advice += `【你能影响的部分】\n`;
+        advice += buildInfluencePart(cards, topic, verdict, perspective, parsed) + `\n\n`;
+
+        advice += `【你无法控制的部分】\n`;
+        advice += buildUncontrollablePart(perspective, parsed, verdict) + `\n\n`;
+
+        advice += `【观察信号：哪些迹象意味着趋势在变】\n`;
+        advice += buildObservationSignals(cards, topic, perspective, parsed) + `\n\n`;
       }
 
-      // 4.4 避免的事
-      advice += `【避免的事】\n`;
-      advice += `${buildAvoidance(cards, topic, verdict)}\n\n`;
+      // 4.3 避免的事
+      advice += `【避免的事】\n${buildAvoidance(cards, topic, verdict, perspective)}\n\n`;
 
-      // 4.5 心态校准（按风格）
+      // 4.4 心态校准
       advice += `【心态校准】\n`;
       const mindsets = {
         mystic: '牌是镜子不是判决书——它告诉你"此刻"，不决定"永远"。最终的选择权一直在你手上。',
@@ -4449,6 +4687,19 @@ ${cardsText}
       return { problem, cardsAnalysis, relationship, advice, summary };
     }
 
+    // 把关心维度翻译成自然中文
+    function dimensionLabel(dim) {
+      const map = {
+        outcome: '最终结果倾向',
+        feeling: '当下心情和感受',
+        timing: '时机与节奏',
+        howto: '具体怎么做',
+        will_happen: '会不会发生',
+        general: '整体走向'
+      };
+      return map[dim] || map.general;
+    }
+
     // ============ 辅助 1：问题类型识别 ============
     function classifyQuestionType(q) {
       if (!q) return 'none';
@@ -4460,9 +4711,10 @@ ${cardsText}
     }
 
     // ============ 辅助 2：倾向性判定（给一个结论而不是模糊回答） ============
-    function judgeVerdict(cards, topic, question) {
+    function judgeVerdict(cards, topic, question, parsed) {
       const reversals = cards.filter(c => c.isReversed).length;
       const count = cards.length;
+      const perspective = parsed ? parsed.subject : 'self';
 
       // 正向/负向关键牌（基于韦特传统含义）
       const strongPositive = [1, 3, 6, 10, 17, 19, 21]; // 魔术师、女皇、恋人、命运之轮、星星、太阳、世界
@@ -4483,19 +4735,61 @@ ${cardsText}
       let label, summary, reason, oneSentence, outlook, path;
       if (score >= 3) {
         label = '倾向肯定';
-        summary = `牌阵给出相对积极的信号，答案更偏向"可以 / 会发生 / 值得去做"。`;
-        outlook = `接下来一段时间的能量是支持你的，但需要你主动走出第一步，而不是被动等待。`;
-        path = `趁这股能量在位时把关键动作做掉，不要反复推敲细节导致错过窗口。`;
+        if (perspective === 'event') {
+          summary = `牌阵给出相对积极的信号，这件事的"势"偏向顺利/成功。`;
+          outlook = `接下来几天这股能量是支持的，但事情能不能最终落地，还取决于执行过程中的临场发挥。`;
+          path = `趁势而为，但别被"应该赢"的情绪放大期待。`;
+        } else if (perspective === 'other') {
+          summary = `牌阵显示 TA 此刻的能量是开放、积极的——对你或这件事是有回应意愿的。`;
+          outlook = `TA 正处在一个能接收你靠近的状态，但别用"应该怎样"来规定对方的节奏。`;
+          path = `保持温柔的主动，一次自然的邀约或一条真诚的消息就够，不需要表演。`;
+        } else if (perspective === 'third_party') {
+          summary = `他们之间的能量流动是健康的，关系处在修复或深化阶段。`;
+          outlook = `这段关系有它自己的弹性，短期摩擦不会破坏根基。`;
+          path = `你作为旁观者，少评论、多观察、不站队，反而是最有价值的支持。`;
+        } else {
+          summary = `牌阵给出相对积极的信号，答案更偏向"可以 / 会发生 / 值得去做"。`;
+          outlook = `接下来一段时间的能量是支持你的，但需要你主动走出第一步，而不是被动等待。`;
+          path = `趁这股能量在位时把关键动作做掉，不要反复推敲细节导致错过窗口。`;
+        }
       } else if (score <= -2) {
         label = '倾向谨慎';
-        summary = `牌阵显示有明显的阻滞或需要重新审视的信号，答案更偏向"不急着做 / 现在做代价较大"。`;
-        outlook = `当前能量不太顺，硬推会消耗过多。先停下来看清问题的根本再说。`;
-        path = `先"止损 / 止血 / 信息收集"，再谈"推进 / 决定"。顺序颠倒代价会很大。`;
+        if (perspective === 'event') {
+          summary = `牌阵显示这件事的"势"不在高点——过程会比预期更曲折，结果偏不利或有波折。`;
+          outlook = `不代表必输/必败，但顺风顺水不会发生；需要靠临场的韧性挣一线。`;
+          path = `别抱赌必赢的心态，把过程本身当目标——即便结果不理想，也不会空手而归。`;
+        } else if (perspective === 'other') {
+          summary = `牌阵显示 TA 此刻并不在状态里——可能情绪低落、忙于别的事，或正在防御。`;
+          outlook = `现在靠近 TA 会比平时更难被回应——不是你不够好，是时机不对。`;
+          path = `先撤回一步，把对 TA 的"主动性"收一收，给彼此都留呼吸空间。`;
+        } else if (perspective === 'third_party') {
+          summary = `他们之间的能量有明显的紧张或裂痕，短期内不会自行修复。`;
+          outlook = `这种张力可能继续发酵，你介入反而会被拖进去。`;
+          path = `这是他们要自己走的过程，你能做的最好的事就是"保持自己的平衡"。`;
+        } else {
+          summary = `牌阵显示有明显的阻滞或需要重新审视的信号，答案更偏向"不急着做 / 现在做代价较大"。`;
+          outlook = `当前能量不太顺，硬推会消耗过多。先停下来看清问题的根本再说。`;
+          path = `先"止损 / 止血 / 信息收集"，再谈"推进 / 决定"。顺序颠倒代价会很大。`;
+        }
       } else {
         label = '中立';
-        summary = `牌阵呈现出双向信号——既有支持也有阻碍，答案要看你自己怎么选。`;
-        outlook = `能量处在转折点，这既是风险也是机会，取决于你用哪种心态去应对。`;
-        path = `先用 48 小时收集 1~2 个关键事实，再做决定。不要凭情绪和猜测行动。`;
+        if (perspective === 'event') {
+          summary = `牌阵呈现势均力敌的画面——这件事的结果取决于几个关键节点的临场表现。`;
+          outlook = `既不是一边倒的赢，也不是必输——结果真的是"打出来的"。`;
+          path = `别用前半段判定结果，等到真正关键的那一刻再下结论。`;
+        } else if (perspective === 'other') {
+          summary = `牌阵显示 TA 处于观望或摇摆的状态——对你的感受没有明确定论。`;
+          outlook = `TA 也在等一些信号。你接下来的行动会真正影响走向，但要自然、不要用力。`;
+          path = `保持真实的自己，不讨好、不施压，让 TA 自己完成内心的选择。`;
+        } else if (perspective === 'third_party') {
+          summary = `他们之间处于一个不稳定的过渡期——可能向好也可能向坏。`;
+          outlook = `接下来几件小事会决定方向，但这些事不受你控制。`;
+          path = `静观其变，需要时做"支持性倾听者"，不要做"解决者"。`;
+        } else {
+          summary = `牌阵呈现出双向信号——既有支持也有阻碍，答案要看你自己怎么选。`;
+          outlook = `能量处在转折点，这既是风险也是机会，取决于你用哪种心态去应对。`;
+          path = `先用 48 小时收集 1~2 个关键事实，再做决定。不要凭情绪和猜测行动。`;
+        }
       }
 
       // 依据：基于几张最醒目的牌
@@ -4531,6 +4825,35 @@ ${cardsText}
         self:    { positive: '你已经到了可以整合与行动的时刻——做那件你一直拖着的事。',
                    caution:  '先处理未消化的情绪或创伤，否则"成长"会反复退回原点。',
                    neutral:  '给自己一段独处时间重新看清方向，不必急于"变成更好的人"。' },
+
+        // ---- 关于他人 ----
+        otherPerson:{ positive: 'TA 当前的能量是开放、积极的——在这个窗口靠近 TA 会比平时更容易被接收。',
+                      caution:  'TA 现在不在状态里——不是不在意你，而是被别的事占着，请给时间和空间。',
+                      neutral:  'TA 处于一种观望/纠结的状态——你的主动会起作用，但效果取决于方式。' },
+        reunion:    { positive: '对方重新联系或回到身边的能量是存在的，但需要时间自然到达——别催。',
+                      caution:  '此刻不是重新建立联系的时机，强行推进会把事情推更远；先把自己的状态养好。',
+                      neutral:  '这件事的走向要看接下来 2~4 周的关键互动，现在做的每件事都在投票。' },
+        thirdParty: { positive: '他们之间会找到一种动态平衡，即使有摩擦也不会根本破裂。',
+                      caution:  '他们之间的问题可能会继续发酵，作为旁观者最好保持距离不介入。',
+                      neutral:  '处于一个不稳定的过渡期，短期难以定论，看事情自然走一段再说。' },
+
+        // ---- 关于事件 ----
+        sports:      { positive: '你关注的一方能量更强、势头更好，倾向赢或发挥出色；临场稳住就行。',
+                      caution:  '对手状态更盛或场上变量多，这场偏不利，但不代表没机会——关注临场调整。',
+                      neutral:  '双方势均力敌，胜负在临场几个关键回合，别看前半场就下结论。' },
+        exam:        { positive: '你的准备和状态都支持你——只要临场不慌，结果会偏好。',
+                      caution:  '基础或状态上有明显漏洞，这次需要靠稳扎稳打而不是爆发——优先保住基础分。',
+                      neutral:  '处于"能过但不稳"的区间，最后几天的作息和心态决定最终结果。' },
+        interview:   { positive: '你和这个机会的契合度不错，大概率会得到积极反馈。',
+                      caution:  '契合度或沟通上有明显距离，录用的可能偏低；但面试本身是有价值的经验。',
+                      neutral:  '50/50 的局面，决定因素是面试中 1~2 个关键问题的表达。' },
+        lottery:     { positive: '近期小运气是有的，小额参与可能带来惊喜，但别放大期待。',
+                      caution:  '这不是你的窗口期，把钱留给更确定的事，这次就当没参加过。',
+                      neutral:  '既不特别好也不特别差，保持娱乐心态，不当真也不放弃。' },
+        application: { positive: '通过的能量是有的，保持主动跟进但不要过度催促。',
+                      caution:  '流程中有变数，不代表拒绝，可能是补材料或等待；做好耐心准备。',
+                      neutral:  '结果取决于一两个关键细节，回头检查材料有没有硬伤。' },
+
         general: { positive: '当下整体能量支持你，可以主动推进。',
                    caution:  '当下要保守，先修复再扩张。',
                    neutral:  '处于转折点，先获取信息再决策。' }
@@ -4542,13 +4865,19 @@ ${cardsText}
     }
 
     // ============ 辅助 3：自然段落式牌阵叙事 ============
-    function buildNarrative(cards, style, topic, reversals) {
+    function buildNarrative(cards, style, topic, reversals, perspective, parsed) {
+      perspective = perspective || 'self';
+      const subjectLabel = parsed && parsed.subjectLabel ? parsed.subjectLabel : (
+        perspective === 'event' ? '这件事' :
+        perspective === 'other' ? 'TA' :
+        perspective === 'third_party' ? '他们' : '你'
+      );
       const count = cards.length;
       let out = `这 ${count} 张牌之间并不是孤立的——它们讲的是一个连贯的故事。\n\n`;
 
       if (count === 1) {
         const c = cards[0];
-        out += `抽到单张《${c.card.name_cn}》${c.isReversed ? '逆位' : '正位'}，意味着此刻你不需要复杂的分析。`;
+        out += `抽到单张《${c.card.name_cn}》${c.isReversed ? '逆位' : '正位'}，意味着此刻不需要复杂的分析。`;
         out += `这张牌本身就是完整的答案——`;
         out += `${getCardTopicLine(c.card, topic || 'general', c.isReversed)}`;
         return out;
@@ -4556,28 +4885,68 @@ ${cardsText}
 
       if (count >= 3) {
         const past = cards[0], present = cards[1], future = cards[2];
-        // 过去 → 现在
-        out += `故事从《${past.card.name_cn}》${past.isReversed ? '逆位' : '正位'}开始——这是"${past.position}"的底色。`;
-        out += past.isReversed
-          ? `它显示你身上有一些未被处理、未被说清的东西，这些东西会无形中影响当下的判断和感受。`
-          : `它为你提供了继续前行所需的基础和资源，这些东西是真实的、可被调用的。`;
-        out += `\n\n`;
-        out += `顺着这股能量走到"${present.position}"，出现了《${present.card.name_cn}》${present.isReversed ? '逆位' : '正位'}。`;
-        out += present.isReversed
-          ? `你现在的状态有某种阻力或反向张力——不是你不够努力，而是方法或方向需要调整。这种"卡住"其实是在提醒你停下来看看。`
-          : `此刻能量是积极流动的，你正处在可以表达、可以推进、可以做决定的窗口期。`;
-        out += `\n\n`;
-        // 现在 → 未来
-        out += `${style.connector}如果你沿当前这条路径继续走下去，会抵达"${future.position}"所指向的《${future.card.name_cn}》${future.isReversed ? '逆位' : '正位'}——`;
-        out += future.isReversed
-          ? `前方画面还不够明朗，意味着结果未定；但这恰好给了你调整的空间，越早调整越有主动权。`
-          : `未来呈现出清晰而正向的方向，这是牌对你现在走法的肯定。`;
-        out += `\n\n`;
+
+        // ★ 按视角切换叙事口吻
+        if (perspective === 'event') {
+          // 事件类：用"过程"的视角
+          out += `故事从《${past.card.name_cn}》${past.isReversed ? '逆位' : '正位'}开始——这是"${past.position}"的底色，也是${subjectLabel}的起点状态。`;
+          out += past.isReversed
+            ? `它显示在起点上就有一些未解决的漏洞或潜在的不稳定因素，这些因素会影响后续的走向。`
+            : `它显示${subjectLabel}在开局就有很扎实的基础，这种基础会一直支撑到后面。`;
+          out += `\n\n顺着这股能量走到"${present.position}"，出现了《${present.card.name_cn}》${present.isReversed ? '逆位' : '正位'}。`;
+          out += present.isReversed
+            ? `进行中的阶段有明显阻力或变数——可能是临场失误、策略偏差、或外部冲击。这是胜负/成败的关键转折点。`
+            : `进行中的阶段能量顺畅——${subjectLabel}正处于发挥本来实力的状态，不出大意外，走势会延续。`;
+          out += `\n\n${style.connector}如果按这条路径走下去，会抵达"${future.position}"所显示的《${future.card.name_cn}》${future.isReversed ? '逆位' : '正位'}——`;
+          out += future.isReversed
+            ? `最终结局还存在变数，没到终场哨都不算数——但这也意味着临场的每个细节都在改变结果。`
+            : `最终呈现出相对清晰的走向，这是这副牌对整个过程的最终注解。`;
+          out += `\n\n`;
+        } else if (perspective === 'other') {
+          // 关于他人：用"TA 的状态流转"
+          out += `从"${past.position}"的《${past.card.name_cn}》${past.isReversed ? '逆位' : '正位'}开始——这是 ${subjectLabel} 过去/背景的能量状态。`;
+          out += past.isReversed
+            ? `TA 身上有一些未消化的事（可能和你无关），这些事一直在影响 TA 对你的态度和反应。`
+            : `TA 的起点是稳定的、开放的，这成为 TA 当下看待你们关系的底色。`;
+          out += `\n\n到了"${present.position}"，TA 此刻的状态呈现为《${present.card.name_cn}》${present.isReversed ? '逆位' : '正位'}。`;
+          out += present.isReversed
+            ? `TA 现在处于某种卡住或反向的状态——可能对你冷淡、防御，但这不一定是因为你，很多时候是 TA 自己的课题。`
+            : `TA 此刻是开放、松弛的，你现在靠近 TA，回应会比平时更好。`;
+          out += `\n\n${style.connector}如果顺当前的能量继续，TA 会走向"${future.position}"的《${future.card.name_cn}》${future.isReversed ? '逆位' : '正位'}——`;
+          out += future.isReversed
+            ? `TA 未来的走向暂时不明朗，也意味着一切还没定型——你的方式会真正影响 TA 的选择。`
+            : `TA 的方向会变得更清晰和正向，只要不去强求，自然到达的那一刻会让你们都轻松。`;
+          out += `\n\n`;
+        } else if (perspective === 'third_party') {
+          out += `他们的关系从"${past.position}"的《${past.card.name_cn}》${past.isReversed ? '逆位' : '正位'}起步——这是关系的基础色调。`;
+          out += past.isReversed ? `起点就带有一些未说清的嫌隙。` : `起点是健康、有基础的。`;
+          out += `\n\n"${present.position}"显示为《${present.card.name_cn}》${present.isReversed ? '逆位' : '正位'}——`;
+          out += present.isReversed ? `他们目前正处在紧张或冷战期。` : `他们目前的互动是顺畅的。`;
+          out += `\n\n走向"${future.position}"的《${future.card.name_cn}》${future.isReversed ? '逆位' : '正位'}，`;
+          out += future.isReversed ? `关系未来仍有不确定性，但这也意味着还有调整空间。` : `关系的未来是稳定的，会自然找到平衡。`;
+          out += `\n\n`;
+        } else {
+          // self：沿用原来的第一人称叙事
+          out += `故事从《${past.card.name_cn}》${past.isReversed ? '逆位' : '正位'}开始——这是"${past.position}"的底色。`;
+          out += past.isReversed
+            ? `它显示你身上有一些未被处理、未被说清的东西，这些东西会无形中影响当下的判断和感受。`
+            : `它为你提供了继续前行所需的基础和资源，这些东西是真实的、可被调用的。`;
+          out += `\n\n顺着这股能量走到"${present.position}"，出现了《${present.card.name_cn}》${present.isReversed ? '逆位' : '正位'}。`;
+          out += present.isReversed
+            ? `你现在的状态有某种阻力或反向张力——不是你不够努力，而是方法或方向需要调整。这种"卡住"其实是在提醒你停下来看看。`
+            : `此刻能量是积极流动的，你正处在可以表达、可以推进、可以做决定的窗口期。`;
+          out += `\n\n${style.connector}如果你沿当前这条路径继续走下去，会抵达"${future.position}"所指向的《${future.card.name_cn}》${future.isReversed ? '逆位' : '正位'}——`;
+          out += future.isReversed
+            ? `前方画面还不够明朗，意味着结果未定；但这恰好给了你调整的空间，越早调整越有主动权。`
+            : `未来呈现出清晰而正向的方向，这是牌对你现在走法的肯定。`;
+          out += `\n\n`;
+        }
+
         if (count > 3) {
           out += `除了这条主线，余下的 ${count - 3} 张牌为故事补充了侧面信息：`;
           for (let i = 3; i < count; i++) {
             const c = cards[i];
-            out += `\n· "${c.position}"的《${c.card.name_cn}》${c.isReversed ? '逆位' : '正位'}——${c.isReversed ? '提示一个你可能一直忽略的盲点' : '提示一项你可以主动利用的资源'}；`;
+            out += `\n· "${c.position}"的《${c.card.name_cn}》${c.isReversed ? '逆位' : '正位'}——${c.isReversed ? '提示一个容易被忽略的盲点' : '提示一项可以被利用的资源或支持'}；`;
           }
           out += `\n\n`;
         }
@@ -4585,8 +4954,10 @@ ${cardsText}
         // 2 张牌
         const a = cards[0], b = cards[1];
         out += `《${a.card.name_cn}》${a.isReversed ? '逆位' : '正位'}（${a.position}）与《${b.card.name_cn}》${b.isReversed ? '逆位' : '正位'}（${b.position}）形成一组对照。`;
-        out += `它们之间的张力，就是你现在真正在处理的核心命题——`;
-        out += `前者代表你手上现有的能量，后者代表你正要面对或要迈向的状态。`;
+        out += `它们之间的张力，就是现在真正的核心命题——`;
+        out += perspective === 'event' ? `前者代表这件事的现状，后者代表它可能的走向。` :
+               perspective === 'other' ? `前者代表 TA 当下的状态，后者代表 TA 可能去到的状态。` :
+               `前者代表你手上现有的能量，后者代表你正要面对或要迈向的状态。`;
         out += `\n\n`;
       }
 
@@ -4603,6 +4974,76 @@ ${cardsText}
     }
 
     // ============ 辅助 4：具体可做动作（24h / 7天 / 30天） ============
+    // ============ 辅助：你能影响的部分（针对他人/事件类问题） ============
+    function buildInfluencePart(cards, topic, verdict, perspective, parsed) {
+      const byTopic = {
+        sports: '你能影响的部分：以支持者心态看比赛——控制自己的情绪、接受任何结果。输赢不由你决定，但你看比赛的方式由你决定。',
+        exam:   '你能影响的部分：未来几天的作息、复习重点、临场心态。考场上不紧张的 10% 加分往往比多刷一套题更有价值。',
+        interview: '你能影响的部分：面试前的准备（了解公司/复盘自己的 STAR 案例/准备你要问对方的 3 个问题）；面试中保持真实、不过度表演；面试后主动发感谢邮件。',
+        lottery: '你能影响的部分：保持"玩"的心态、控制投入额度、不为此事影响其它计划。运气的本质就是不可控，你能控的是自己的期望值。',
+        application: '你能影响的部分：再次检查材料的硬伤、补充可量化的成果、主动礼貌跟进一次进度。',
+        otherPerson: '你能影响的部分：你自己的状态和表达方式。TA 能不能接收到取决于 TA 的当下，但你的真诚和稳定会一直被记住。',
+        reunion: '你能影响的部分：不去催促、不去反复试探，先把自己的生活过好。对方回来的概率和你"变得更好"成正比。',
+        thirdParty: '你能影响的部分：做他们其中一个（或两个）的情绪支持者，不评判、不建议、不劝和。你的存在本身就是支持。',
+        general: '你能影响的部分：你自己的状态、你的表达、你的选择。其他的，交给时间。'
+      };
+      return byTopic[topic] || byTopic.general;
+    }
+
+    function buildUncontrollablePart(perspective, parsed, verdict) {
+      if (perspective === 'event') {
+        return '你无法控制的部分：最终的结果，临场的变量，对方/对手的发挥。接受这些本来就不受你掌控——当你不去抓它，心反而更稳。';
+      }
+      if (perspective === 'other') {
+        return '你无法控制的部分：TA 的想法、TA 的回应节奏、TA 何时愿意打开心。爱人不是 debug——TA 不按逻辑运行，也不归你"搞定"。';
+      }
+      if (perspective === 'third_party') {
+        return '你无法控制的部分：他们两个人的选择、他们的沟通方式、他们的节奏。关系是他们自己要走的路，不是你能替他们走的。';
+      }
+      return '你无法控制的部分：他人的反应、外部环境的变量、结果的呈现形式。这些属于"不归你管"的范围——放下它们才能更专注在你能管的事上。';
+    }
+
+    function buildObservationSignals(cards, topic, perspective, parsed) {
+      const byTopic = {
+        sports: [
+          '信号 ①：开场 15 分钟内一方的气场（主动/被动、从容/急躁）——往往预示整场的大方向',
+          '信号 ②：核心球员的肢体语言和表情——真实状态往往写在脸上',
+          '信号 ③：中场休息后的节奏调整——看教练组的战术是否起效'
+        ].join('\n'),
+        exam: [
+          '信号 ①：考前一周的睡眠质量——睡得好的人考场状态普遍会好',
+          '信号 ②：做模拟题时错题的类型变化——如果是"基础题少错、难题正常错"，就是良性',
+          '信号 ③：考前心态——"坦然想去考完"比"焦虑想再多刷题"更接近好结果'
+        ].join('\n'),
+        interview: [
+          '信号 ①：面试官的追问深度——追问越多越认真，越表达兴趣',
+          '信号 ②：面试时长是否超出预期——正面信号',
+          '信号 ③：面试最后是否主动介绍公司/岗位细节——很可能是真的想让你加入'
+        ].join('\n'),
+        otherPerson: [
+          '信号 ①：TA 主动联系你的频率是否变化（这比单次联系更有意义）',
+          '信号 ②：TA 聊天时的情绪颗粒度——愿意讲细节 vs. 只敷衍回应',
+          '信号 ③：TA 是否在你面前"做自己"——松弛比殷勤更说明问题'
+        ].join('\n'),
+        reunion: [
+          '信号 ①：对方是否在你共同的社交圈开始"出现"（点赞/出现在共同场景）',
+          '信号 ②：对方提到你的方式——语气从"回避"到"中性"再到"温和"，是逐步的',
+          '信号 ③：你自己的状态是否稳定到"没有 TA 也过得好"——这是 TA 最想看到的信号'
+        ].join('\n'),
+        thirdParty: [
+          '信号 ①：他们是否开始就事情本身沟通，而不是反复走情绪',
+          '信号 ②：双方共同的朋友是否开始充当桥梁——通常意味着关系在解冻',
+          '信号 ③：双方对外表达对方的方式——从抱怨转为"各有各的道理"是关键转折'
+        ].join('\n'),
+        general: [
+          '信号 ①：你自己的情绪稳定度（是主动稳定 vs. 被事情牵着走）',
+          '信号 ②：与此事相关的偶然"小讯号"（一次对话、一次巧合）——留心它们',
+          '信号 ③：你能否开始说"算了"或"没关系"——这往往意味着你不再被困住'
+        ].join('\n')
+      };
+      return byTopic[topic] || byTopic.general;
+    }
+
     function buildConcreteAction(cardItem, topic, horizon) {
       const card = cardItem.card;
       const isRev = cardItem.isReversed;
@@ -4729,7 +5170,7 @@ ${cardsText}
     }
 
     // ============ 辅助 5：避免的事 ============
-    function buildAvoidance(cards, topic, verdict) {
+    function buildAvoidance(cards, topic, verdict, perspective) {
       const avoidByTopic = {
         love:    '别用"他/她应该懂"代替真实沟通；别在情绪激烈时发重要消息；别用模糊的"也许"掩盖你想说清楚的那句话。',
         career:  '别用忙碌代替思考；别在没验证前推翻已有的；别把"加班感"当"价值感"。',
@@ -4738,13 +5179,28 @@ ${cardsText}
         health:  '别用"意志力"替代"好好休息"；别用"周末补回来"欺骗自己；别忽略身体发出的重复信号。',
         decision:'别在情绪低谷做重大决定；别因为别人"希望你选 A"而选 A；别用"再观望一下"无限拖延。',
         self:    '别用忙碌和社交掩盖真正的感受；别拿别人的时间表要求自己；别低估每天一点点的力量。',
-        general: '别把"焦虑地想"当成"认真地想"；别用完美计划替代已经开始；别让别人的节奏打乱你自己的节奏。'
+        // 他人/事件
+        otherPerson: '别反复 DM / 发消息给对方；别在朋友圈做针对 TA 的"暗语"；别在 TA 沉默时自我折磨"是不是我做错了"。',
+        reunion:     '别靠共同好友打探 TA 动态；别喝醉后发消息；别删了又发、发了又删。',
+        thirdParty:  '别急着调停；别把你听到的一方的话转述给另一方；别评判"谁对谁错"。',
+        sports:      '别情绪化下注/押宝；别把比赛结果和自己的自我价值捆绑；别在开场 10 分钟就下判决书。',
+        exam:        '别考前一晚刷难题；别和临考前状态差的同学深聊；别考完立刻对答案（会影响下一科）。',
+        interview:   '别背"标准答案"；别在面试时评价前公司/前上司；别问"能不能过"——没人能给你当场回答。',
+        lottery:     '别为了这件事借钱或挪用积蓄；别在失败后"再来一次就能回本"。',
+        application: '别反复修改同一段文字改到失去灵气；别每天催 HR/审核方；别把单一机会作为唯一希望。',
+        general:     '别把"焦虑地想"当成"认真地想"；别用完美计划替代已经开始；别让别人的节奏打乱你自己的节奏。'
       };
-      const extra = verdict.bucket === 'caution'
-        ? '另外，当前能量偏谨慎，特别要避免"冲动推进"——你现在多等一步，未来就少走十步弯路。'
-        : verdict.bucket === 'positive'
-          ? '另外，当前能量很顺，最该避免的反而是"过度思考"——分析太多会让你错过窗口。'
-          : '另外，在能量中立的时刻，最该避免的是"情绪化决策"——请让理性多走一点。';
+      // 按视角的额外补充
+      let extra;
+      if (perspective === 'event' || perspective === 'other' || perspective === 'third_party') {
+        extra = '另外：请别把"解读结果"说给相关的人听——让牌的信息留在你自己这里，观察就好，否则会反过来影响事情的走向。';
+      } else {
+        extra = verdict.bucket === 'caution'
+          ? '另外，当前能量偏谨慎，特别要避免"冲动推进"——你现在多等一步，未来就少走十步弯路。'
+          : verdict.bucket === 'positive'
+            ? '另外，当前能量很顺，最该避免的反而是"过度思考"——分析太多会让你错过窗口。'
+            : '另外，在能量中立的时刻，最该避免的是"情绪化决策"——请让理性多走一点。';
+      }
       return (avoidByTopic[topic] || avoidByTopic.general) + '\n' + extra;
     }
 
