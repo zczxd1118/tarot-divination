@@ -1115,6 +1115,204 @@
       text-align: center;
     }
 
+    /* Pick Mode Toggle */
+    .pick-mode-toggle {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: center;
+      margin: 1rem 0 1.25rem 0;
+      flex-wrap: wrap;
+    }
+
+    .pick-mode-btn {
+      padding: 0.5rem 1.1rem;
+      background: rgba(13, 6, 20, 0.6);
+      border: 1px solid var(--gold-dark);
+      border-radius: 999px;
+      color: var(--text-light);
+      font-family: inherit;
+      font-size: 0.88rem;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      -webkit-tap-highlight-color: transparent;
+      letter-spacing: 0.05em;
+    }
+
+    .pick-mode-btn:hover {
+      border-color: var(--gold-primary);
+      background: rgba(201, 162, 39, 0.1);
+    }
+
+    .pick-mode-btn.active {
+      background: linear-gradient(135deg, var(--gold-dark), var(--gold-primary));
+      color: var(--bg-deep);
+      border-color: var(--gold-primary);
+      font-weight: 600;
+      box-shadow: 0 0 12px var(--accent-glow);
+    }
+
+    /* Wheel of Fate */
+    .wheel-area {
+      width: 100%;
+      max-width: 580px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .wheel-stage {
+      position: relative;
+      width: 100%;
+      max-width: 480px;
+      aspect-ratio: 1;
+      margin: 0 auto;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: none;
+    }
+
+    .wheel-pointer {
+      position: absolute;
+      top: -8px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 2rem;
+      color: var(--gold-primary);
+      filter: drop-shadow(0 0 8px var(--accent-glow));
+      z-index: 10;
+      pointer-events: none;
+      animation: pointerPulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pointerPulse {
+      0%, 100% { transform: translateX(-50%) translateY(0); }
+      50% { transform: translateX(-50%) translateY(-4px); }
+    }
+
+    .wheel-disc {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(45, 27, 78, 0.6) 0%, rgba(13, 6, 20, 0.9) 70%);
+      border: 2px solid var(--gold-dark);
+      box-shadow: 0 0 30px var(--accent-glow), inset 0 0 30px rgba(0, 0, 0, 0.6);
+      cursor: grab;
+      transform-origin: center;
+      will-change: transform;
+    }
+
+    .wheel-disc.grabbing { cursor: grabbing; }
+    .wheel-disc.spinning { cursor: default; }
+
+    .wheel-card {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 36px;
+      height: 56px;
+      margin: -28px 0 0 -18px;
+      background: linear-gradient(145deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
+      border: 1px solid var(--gold-dark);
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--gold-primary);
+      font-size: 1rem;
+      transform-origin: center;
+      transition: box-shadow 0.2s, border-color 0.2s;
+      pointer-events: none;
+    }
+
+    .wheel-card.highlighted {
+      box-shadow: 0 0 16px var(--gold-primary), 0 0 32px var(--accent-glow);
+      border-color: var(--gold-primary);
+      z-index: 5;
+    }
+
+    .wheel-card.highlighted .wheel-card-symbol {
+      color: var(--gold-light);
+      transform: scale(1.2);
+    }
+
+    .wheel-card-symbol {
+      transition: transform 0.2s, color 0.2s;
+    }
+
+    .wheel-center {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 110px;
+      height: 110px;
+      margin: -55px 0 0 -55px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(201, 162, 39, 0.2) 0%, rgba(13, 6, 20, 0.95) 70%);
+      border: 1px solid var(--gold-primary);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      pointer-events: none;
+      z-index: 6;
+    }
+
+    .wheel-center-symbol {
+      font-size: 1.8rem;
+      color: var(--gold-primary);
+      filter: drop-shadow(0 0 6px var(--accent-glow));
+    }
+
+    .wheel-center-text {
+      font-size: 0.78rem;
+      color: var(--gold-light);
+      text-align: center;
+      padding: 0 0.5rem;
+      line-height: 1.3;
+      max-width: 90px;
+      letter-spacing: 0.05em;
+    }
+
+    .wheel-controls {
+      display: flex;
+      gap: 0.75rem;
+      margin-top: 1.25rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .wheel-controls .btn-primary,
+    .wheel-controls .btn-secondary {
+      padding: 0.7rem 1.5rem;
+      font-size: 0.92rem;
+    }
+
+    .wheel-pick-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .wheel-hint {
+      margin-top: 0.85rem;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      text-align: center;
+    }
+
+    @media (max-width: 480px) {
+      .wheel-card {
+        width: 30px; height: 46px;
+        margin: -23px 0 0 -15px;
+        font-size: 0.85rem; border-radius: 3px;
+      }
+      .wheel-center {
+        width: 90px; height: 90px;
+        margin: -45px 0 0 -45px;
+      }
+      .wheel-center-symbol { font-size: 1.5rem; }
+      .wheel-center-text { font-size: 0.7rem; max-width: 76px; }
+      .wheel-pointer { font-size: 1.5rem; top: -6px; }
+    }
+
     /* Style Selector */
     .style-selector {
       margin: 1rem 0 1.5rem 0;
@@ -1924,9 +2122,39 @@
             <!-- 槽位将由JavaScript动态生成 -->
           </div>
         </div>
-        
+
+        <!-- 抽牌模式切换 -->
+        <div class="pick-mode-toggle">
+          <button class="pick-mode-btn active" data-pick-mode="grid" onclick="changePickMode('grid')">
+            📋 整齐网格
+          </button>
+          <button class="pick-mode-btn" data-pick-mode="wheel" onclick="changePickMode('wheel')">
+            🎡 轮盘抽牌
+          </button>
+        </div>
+
+        <!-- 整齐网格模式 -->
         <div class="card-grid" id="cardGrid"></div>
-        
+
+        <!-- 轮盘模式 -->
+        <div class="wheel-area" id="wheelArea" style="display:none;">
+          <div class="wheel-stage">
+            <div class="wheel-pointer">▼</div>
+            <div class="wheel-disc" id="wheelDisc"></div>
+            <div class="wheel-center">
+              <span class="wheel-center-symbol">✦</span>
+              <span class="wheel-center-text" id="wheelHighlightName">旋转或拖动</span>
+            </div>
+          </div>
+          <div class="wheel-controls">
+            <button class="btn-secondary wheel-spin-btn" onclick="spinWheel()">🎲 随机旋转</button>
+            <button class="btn-primary wheel-pick-btn" id="wheelPickBtn" onclick="pickWheelCard()" disabled>
+              ✦ 选定此牌
+            </button>
+          </div>
+          <div class="wheel-hint">提示：手指/鼠标可拖动转盘；停下后顶部指针所指即为可选之牌</div>
+        </div>
+
         <button class="btn-secondary" onclick="goHome()" style="margin-top: 1.5rem;">
           ← 返回首页
         </button>
@@ -3040,6 +3268,9 @@
         catch(e) { return 'mystic'; }
       })(),
       _aiReqToken: 0,
+      pickMode: 'grid',           // 'grid' | 'wheel'
+      wheelAngle: 0,              // 轮盘当前角度（度）
+      wheelSpinning: false,       // 是否在旋转动画中
       history: []
     };
 
@@ -3270,7 +3501,22 @@
       state.deck = shuffleArray(TAROT_CARDS);
       state.selectedCards = [];
       generateSelectionSlots();
-      renderCardGrid();
+      // 同步两种模式的初始视图
+      const grid = document.getElementById('cardGrid');
+      const wheel = document.getElementById('wheelArea');
+      if (state.pickMode === 'wheel') {
+        grid.style.display = 'none';
+        wheel.style.display = 'flex';
+        renderWheel();
+      } else {
+        grid.style.display = '';
+        wheel.style.display = 'none';
+        renderCardGrid();
+      }
+      // 同步 toggle 高亮
+      document.querySelectorAll('.pick-mode-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.pickMode === state.pickMode);
+      });
       updateSelectionSlots();
     }
 
@@ -3305,34 +3551,291 @@
 
     function onManualCardClick(index) {
       const card = state.deck[index];
-      const existingIndex = state.selectedCards.findIndex(s => s.card.id === card.id);
+      pickCardForSlot(card);
+    }
+
+    // 公共：把一张牌放入下一个可用槽位（网格 / 轮盘 共用）
+    function pickCardForSlot(card) {
       const spreadConfig = SPREADS[state.spread];
-      
+      const existingIndex = state.selectedCards.findIndex(s => s.card.id === card.id);
+
       if (existingIndex !== -1) {
+        // 取消选择
         state.selectedCards.splice(existingIndex, 1);
-        renderCardGrid();
+        if (state.pickMode === 'wheel') renderWheel(); else renderCardGrid();
         updateSelectionSlots();
         return;
       }
-      
       if (state.selectedCards.length >= spreadConfig.count) return;
-      
+
       state.selectedCards.push({
         card: card,
         isReversed: Math.random() > 0.5,
         position: spreadConfig.positions[state.selectedCards.length]
       });
-      
-      renderCardGrid();
+
+      if (state.pickMode === 'wheel') renderWheel(); else renderCardGrid();
       updateSelectionSlots();
-      
+
       if (state.selectedCards.length === spreadConfig.count) {
-        // 选完牌后，跳转到翻牌阶段
-        setTimeout(() => {
-          showManualRevealPage();
-        }, 500);
+        setTimeout(() => { showManualRevealPage(); }, 500);
       }
     }
+
+    // ========== 轮盘抽牌实现 ==========
+    function changePickMode(mode) {
+      if (state.pickMode === mode) return;
+      state.pickMode = mode;
+      try { localStorage.setItem('tarotPickMode', mode); } catch(e) {}
+      const grid = document.getElementById('cardGrid');
+      const wheel = document.getElementById('wheelArea');
+      document.querySelectorAll('.pick-mode-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.pickMode === mode);
+      });
+      if (mode === 'wheel') {
+        grid.style.display = 'none';
+        wheel.style.display = 'flex';
+        renderWheel();
+      } else {
+        grid.style.display = '';
+        wheel.style.display = 'none';
+        renderCardGrid();
+      }
+    }
+
+    // 轮盘上当前可抽的牌（已选中的会被剔除）
+    function getWheelCards() {
+      const selectedIds = new Set(state.selectedCards.map(s => s.card.id));
+      return state.deck.filter(c => !selectedIds.has(c.id));
+    }
+
+    function renderWheel() {
+      const disc = document.getElementById('wheelDisc');
+      const cards = getWheelCards();
+      disc.innerHTML = '';
+      const n = cards.length;
+      if (n === 0) {
+        document.getElementById('wheelHighlightName').textContent = '已抽满';
+        return;
+      }
+
+      // 牌沿圆周分布；半径取容器宽度比例（CSS 设计上是相对位置）
+      // 用 CSS 变量做计算，但这里直接用 px：让卡片中心位于半径处
+      // 容器是正方形，我们以中心为原点
+      const stage = document.querySelector('.wheel-stage');
+      const stageW = stage.clientWidth || 480;
+      const radius = stageW * 0.42; // 略小于半径
+
+      cards.forEach((card, i) => {
+        const angle = (i * 360 / n);
+        const el = document.createElement('div');
+        el.className = 'wheel-card';
+        el.dataset.cardId = card.id;
+        el.dataset.angle = angle;
+        // 关键：每张牌相对圆心放置，再绕圆心旋转
+        // 实际位置 = translate(cos*r, sin*r) ; 然后让卡牌"朝外"旋转 (angle + 90)
+        const rad = (angle - 90) * Math.PI / 180;
+        const x = Math.cos(rad) * radius;
+        const y = Math.sin(rad) * radius;
+        // 用 translate 把卡片定位到圆周；再用 rotate 让卡片正对圆心外
+        el.style.transform = `translate(${x}px, ${y}px) rotate(${angle}deg)`;
+        el.innerHTML = `<span class="wheel-card-symbol">✦</span>`;
+        disc.appendChild(el);
+      });
+
+      applyWheelTransform();
+      updateWheelHighlight();
+    }
+
+    function applyWheelTransform() {
+      const disc = document.getElementById('wheelDisc');
+      if (!disc) return;
+      disc.style.transform = `rotate(${state.wheelAngle}deg)`;
+    }
+
+    // 计算指针指向的牌：指针在最顶部（angle=0），所以转盘旋转 θ 后，世界角 -θ 处的牌就到了顶部
+    function findPointerCard() {
+      const cards = getWheelCards();
+      const n = cards.length;
+      if (n === 0) return null;
+      // 转盘角度的归一化
+      let theta = ((state.wheelAngle % 360) + 360) % 360;
+      // 我们要找：转后角接近 0 的那张牌
+      // 牌的原始角是 i*(360/n)，旋转后位置 = (orig + theta) mod 360
+      // 我们要 (orig + theta) ≡ 0 (mod 360)，即 orig ≈ (360 - theta) mod 360
+      const target = (360 - theta + 360) % 360;
+      const step = 360 / n;
+      // 找最接近 target 的索引
+      let bestIdx = 0, bestDiff = Infinity;
+      for (let i = 0; i < n; i++) {
+        const orig = i * step;
+        let diff = Math.abs(orig - target);
+        if (diff > 180) diff = 360 - diff;
+        if (diff < bestDiff) { bestDiff = diff; bestIdx = i; }
+      }
+      return { card: cards[bestIdx], idx: bestIdx };
+    }
+
+    function updateWheelHighlight() {
+      const disc = document.getElementById('wheelDisc');
+      if (!disc) return;
+      const result = findPointerCard();
+      const nameEl = document.getElementById('wheelHighlightName');
+      const pickBtn = document.getElementById('wheelPickBtn');
+
+      // 清掉所有高亮
+      disc.querySelectorAll('.wheel-card.highlighted').forEach(el => el.classList.remove('highlighted'));
+
+      if (!result) {
+        nameEl.textContent = '已抽满';
+        pickBtn.disabled = true;
+        return;
+      }
+      // 把对应的牌加上高亮
+      const els = disc.querySelectorAll('.wheel-card');
+      if (els[result.idx]) els[result.idx].classList.add('highlighted');
+      nameEl.textContent = result.card.name_cn;
+      pickBtn.disabled = false;
+    }
+
+    function pickWheelCard() {
+      if (state.wheelSpinning) return;
+      const result = findPointerCard();
+      if (!result) return;
+      pickCardForSlot(result.card);
+      // 抽完一张后，轮盘的牌少一张，需要重排
+      if (state.selectedCards.length < SPREADS[state.spread].count) {
+        renderWheel();
+      }
+    }
+
+    function spinWheel() {
+      if (state.wheelSpinning) return;
+      const disc = document.getElementById('wheelDisc');
+      if (!disc) return;
+      state.wheelSpinning = true;
+      disc.classList.add('spinning');
+      const pickBtn = document.getElementById('wheelPickBtn');
+      pickBtn.disabled = true;
+
+      // 随机：3~6 圈 + 随机偏移
+      const extra = 360 * (3 + Math.random() * 3) + Math.random() * 360;
+      const start = state.wheelAngle;
+      const end = start + extra;
+      const duration = 2200 + Math.random() * 1200; // 2.2~3.4s
+      const startTime = performance.now();
+
+      function tick(now) {
+        const t = Math.min(1, (now - startTime) / duration);
+        // ease-out cubic
+        const eased = 1 - Math.pow(1 - t, 3);
+        state.wheelAngle = start + (end - start) * eased;
+        applyWheelTransform();
+        updateWheelHighlight();
+        if (t < 1) {
+          requestAnimationFrame(tick);
+        } else {
+          state.wheelSpinning = false;
+          disc.classList.remove('spinning');
+          updateWheelHighlight();
+        }
+      }
+      requestAnimationFrame(tick);
+    }
+
+    // 拖拽交互（鼠标 + 触摸）
+    function setupWheelDrag() {
+      const stage = document.querySelector('.wheel-stage');
+      const disc = document.getElementById('wheelDisc');
+      if (!stage || !disc || disc.dataset.dragBound === '1') return;
+      disc.dataset.dragBound = '1';
+
+      let dragging = false;
+      let lastAngle = 0;
+      let velocity = 0; // 度/帧
+      let lastMoveTime = 0;
+      let inertiaRAF = null;
+
+      function getCenter() {
+        const rect = stage.getBoundingClientRect();
+        return { cx: rect.left + rect.width / 2, cy: rect.top + rect.height / 2 };
+      }
+      function getAngleFromEvent(e) {
+        const { cx, cy } = getCenter();
+        const p = e.touches ? e.touches[0] : e;
+        const dx = p.clientX - cx;
+        const dy = p.clientY - cy;
+        return Math.atan2(dy, dx) * 180 / Math.PI;
+      }
+      function startDrag(e) {
+        if (state.wheelSpinning) return;
+        dragging = true;
+        if (inertiaRAF) cancelAnimationFrame(inertiaRAF);
+        lastAngle = getAngleFromEvent(e);
+        lastMoveTime = performance.now();
+        velocity = 0;
+        disc.classList.add('grabbing');
+        e.preventDefault();
+      }
+      function moveDrag(e) {
+        if (!dragging) return;
+        const a = getAngleFromEvent(e);
+        let delta = a - lastAngle;
+        // 跨象限保护
+        if (delta > 180) delta -= 360;
+        if (delta < -180) delta += 360;
+        state.wheelAngle += delta;
+        applyWheelTransform();
+        updateWheelHighlight();
+
+        const now = performance.now();
+        const dt = Math.max(1, now - lastMoveTime);
+        velocity = delta / dt * 16; // 归一为每帧增量
+        lastAngle = a;
+        lastMoveTime = now;
+        e.preventDefault();
+      }
+      function endDrag() {
+        if (!dragging) return;
+        dragging = false;
+        disc.classList.remove('grabbing');
+        // 惯性滑行
+        if (Math.abs(velocity) > 0.6) {
+          const friction = 0.96;
+          function decay() {
+            velocity *= friction;
+            state.wheelAngle += velocity;
+            applyWheelTransform();
+            updateWheelHighlight();
+            if (Math.abs(velocity) > 0.05) {
+              inertiaRAF = requestAnimationFrame(decay);
+            } else {
+              inertiaRAF = null;
+            }
+          }
+          inertiaRAF = requestAnimationFrame(decay);
+        }
+      }
+
+      stage.addEventListener('mousedown', startDrag);
+      window.addEventListener('mousemove', moveDrag);
+      window.addEventListener('mouseup', endDrag);
+      stage.addEventListener('touchstart', startDrag, { passive: false });
+      window.addEventListener('touchmove', moveDrag, { passive: false });
+      window.addEventListener('touchend', endDrag);
+    }
+    // 页面加载后绑定一次
+    document.addEventListener('DOMContentLoaded', () => {
+      setupWheelDrag();
+      // 恢复用户偏好的抽牌模式
+      try {
+        const saved = localStorage.getItem('tarotPickMode');
+        if (saved === 'wheel' || saved === 'grid') state.pickMode = saved;
+      } catch(e) {}
+      document.querySelectorAll('.pick-mode-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.pickMode === state.pickMode);
+      });
+    });
 
     function showManualRevealPage() {
       showPage('manualRevealPage');
