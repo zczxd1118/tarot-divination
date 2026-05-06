@@ -4050,30 +4050,232 @@ ${cardsText}
       general: { focus: '当前生命状态', dimensions: ['整体能量','核心议题','当下的功课','未来的可能'] }
     };
 
-    // ============ 单张牌的"四维"细节 ============
+    // ============ 主题通用兜底话术（无任何细节命中时使用） ============
+    const TOPIC_GENERIC = {
+      love:    { up: '在感情层面，这张牌鼓励你以更坦诚、开放的状态去靠近对方或靠近自己的真实需求。',
+                 rev: '在感情层面，这张牌提示有未说出口的情绪或未澄清的期待正在消耗你们，需要被诚实地摊开。' },
+      career:  { up: '在事业层面，这张牌支持你把手头最重要的一件事推进到下一个阶段，而不是同时开太多线。',
+                 rev: '在事业层面，这张牌提示你目前的努力方向与回报不成比例，需要重新评估是流程问题还是方向问题。' },
+      money:   { up: '在财务层面，这张牌提示你手头有可被善用的资源或机会，关键是开始具体记录与配置。',
+                 rev: '在财务层面，这张牌警示你当前有看不见的漏洞或不健康习惯，先止血再进攻。' },
+      study:   { up: '在学业层面，这张牌鼓励你把大目标拆成"今天能做完的具体一步"，然后真的去做完。',
+                 rev: '在学业层面，这张牌提示你目前的低效不是因为不努力，而是方法或状态出了问题，需要停下来诊断。' },
+      health:  { up: '在身心层面，这张牌提示你当前有足够恢复能量，但需要规律作息与适度身体活动去承接。',
+                 rev: '在身心层面，这张牌提示你一直在硬撑，身体或情绪已经在抗议，必须给自己真正的休息而不是表演性休息。' },
+      decision:{ up: '针对抉择，这张牌倾向于支持更主动、更接近你真想要的那个选项，哪怕它看起来更难。',
+                 rev: '针对抉择，这张牌提示你目前的纠结是因为信息不全或恐惧主导，先别做决定，去获取一个关键事实。' },
+      self:    { up: '在自我成长层面，这张牌提示你已经到了一个整合的节点，去做那件"你知道该做但一直没开始"的事。',
+                 rev: '在自我成长层面，这张牌提示你正在用忙碌或逃避回避一个真正的功课，它不会自行消失。' },
+      general: { up: '整体而言，这张牌显示能量正在朝有利方向流动，你需要做的是不挡住它。',
+                 rev: '整体而言，这张牌显示有阻滞或反向的张力，是时候停下来重新看清情况。' }
+    };
+
+    // ============ 花色 × 主题：小阿卡那的具体话术 ============
+    const SUIT_TOPIC = {
+      wands: {
+        love:    { up: '感情需要更多行动和表达——一次主动的邀约、一次真诚的告白，胜过无数次脑内排练。',
+                   rev: '感情中有一股未释放的火气或嫉妒，与其在心里反复演练，不如直接说出来或离开现场。' },
+        career:  { up: '事业上你处于主动出击的窗口期，适合发起新项目、申请新资源、报名一次公开展示。',
+                   rev: '工作热情在被琐事消耗，是时候砍掉 1~2 项不创造价值的会议或任务，保护你的主战场。' },
+        money:   { up: '财务上可以小幅试水你看好但未行动的机会——额度控制在"亏掉也不心疼"的范围内。',
+                   rev: '近期不要冲动消费或冲动投资，在按下确认前强制等待 24 小时。' },
+        study:   { up: '学习进入高能状态，适合攻坚难题——每天锁定一个 90 分钟的深度学习块。',
+                   rev: '近期学习浮躁，不要再一次性铺开五件事，挑最痛的一件先打通。' },
+        health:  { up: '身体需要被使用——哪怕只是快走 20 分钟，也能把堵住的能量重新点燃。',
+                   rev: '你最近在透支，请不要再"再坚持一下"，今晚 11 点前放下手机。' },
+        decision:{ up: '抉择上，倾向那个让你想立刻开始的选项——直觉不是冲动，是你综合过的答案。',
+                   rev: '这次的犹豫来自情绪而非理性，先冷静 48 小时再决定，别让冲动替你选。' },
+        self:    { up: '你的生命力正被召唤，去做那件"想了很久但没开始"的事——今天就买第一本书或发第一条消息。',
+                   rev: '你在用瞎忙代替真正的成长，找一个下午彻底停下来，写下你真正想要的是什么。' }
+      },
+      cups: {
+        love:    { up: '感情的核心是情感连结本身，去表达一次你从未说过的柔软——无论回应如何，你会更接近真实的自己。',
+                   rev: '关系里有未处理的旧伤在悄悄影响你，先承认"我还在难过"，而不是假装已经过去。' },
+        career:  { up: '工作中的人际温度会带来意外资源——主动约一位你欣赏的前辈喝一次咖啡。',
+                   rev: '你在工作中的情绪劳动过多，是时候设立边界：不接手不属于你的责任。' },
+        money:   { up: '与关系相关的财务事务（合伙/赠与/家庭）会给你带来流动，保持诚意与透明。',
+                   rev: '避免因情绪化（补偿、自我安慰、报复性消费）而做出的花钱决定。' },
+        study:   { up: '学习进入"为热爱而学"的状态，允许自己选一门看起来没用但真喜欢的内容。',
+                   rev: '你的学习动力被情绪卡住了，先处理情绪，再谈效率——不是相反。' },
+        health:  { up: '情绪健康正在改善，继续做那些让你心里松一口气的小事——养花、听歌、泡澡。',
+                   rev: '你积压了太多情绪，找一个信任的人说一次，或写 30 分钟不间断的自由书写。' },
+        decision:{ up: '抉择上，倾向那个"感觉对"的选项——这次你的感受比 Excel 更聪明。',
+                   rev: '别在情绪低谷时做重大决定，先把状态恢复到"平静"再回来回答这个问题。' },
+        self:    { up: '你正在重新连接被忽视的情感部分——给内在的自己一次真正的陪伴。',
+                   rev: '你在用忙碌掩盖某种悲伤或失落，承认它才能穿越它。' }
+      },
+      swords: {
+        love:    { up: '感情需要一次坦诚的对话，把你回避的话题摆上桌面——真相会让关系要么更近要么更清晰地结束。',
+                   rev: '停止在脑内反复审判对方或自己，你的思维循环比事实更伤你。' },
+        career:  { up: '事业上需要一次清晰的思考与决策，列出事实、区分事实与推测，再行动。',
+                   rev: '你陷入了"想太多但不做"的瘫痪状态，把思考限制在 1 小时内，然后强制执行。' },
+        money:   { up: '财务上到了做一次清账的时候——打开账单，面对数字，然后做一份真实的预算。',
+                   rev: '不要在焦虑驱动下做投资或消费决定，焦虑永远推销最差的方案。' },
+        study:   { up: '学习需要结构化——画一张思维导图或大纲，比埋头刷题更能突破瓶颈。',
+                   rev: '你正在"学了但没整理"的状态里空转，今晚花 30 分钟复盘而不是学新内容。' },
+        health:  { up: '思维清明时身体也会更好——练习一次正念呼吸或冥想，让大脑真正休息。',
+                   rev: '失眠、焦虑、反刍思维需要被认真对待，不是靠意志力压下去的。' },
+        decision:{ up: '抉择上，用一张纸列出每个选项的真实代价与收益——答案会从纸上浮现。',
+                   rev: '你已经知道答案，只是不敢承认——今晚写下"如果没有恐惧，我会怎么选"。' },
+        self:    { up: '是时候说一句真话——对别人或对自己——哪怕它会让某些事情结束。',
+                   rev: '你在用自我批判代替成长，今天允许自己"只是尽力了"而不是"又搞砸了"。' }
+      },
+      pentacles: {
+        love:    { up: '稳定关系需要具体行动来滋养——一次计划好的约会、一份用心挑选的小礼物，比宏大誓言更有力。',
+                   rev: '关系在现实层面（金钱、居住、家庭责任）出现不对等，需要坐下来谈一次具体安排。' },
+        career:  { up: '工作进入稳步积累期，去做那些"看起来无聊但长期有价值"的事——整理文档、复盘项目。',
+                   rev: '你在做错方向的努力，停下来问一次：这份工作一年后会带你去哪里？' },
+        money:   { up: '财务上到了配置与积累的好时机——开一个自动储蓄，配置一份不碰的长期资金。',
+                   rev: '警惕"看起来稳赚"的诱惑，不懂的产品不要碰，守住本金比赚快钱更重要。' },
+        study:   { up: '脚踏实地的重复是现阶段最有效的策略——每天固定时间、固定地点、固定量。',
+                   rev: '你在用拖延掩饰对失败的恐惧——把任务拆到"5 分钟能开始"的最小单位。' },
+        health:  { up: '身体层面需要朴素的坚持——按时吃饭、充足睡眠、每天走 6000 步。',
+                   rev: '身体在发出信号但你忽视了，今晚就预约一次体检，不要再往后推。' },
+        decision:{ up: '抉择上，倾向那个"能长期复利"的选项——短期爽感不如复利稳定。',
+                   rev: '不要被短期利益诱惑去做违背长期价值的选择，三年后你会感谢自己忍住。' },
+        self:    { up: '成长是具体的——不是读多少书、打多少卡，而是生活中那些"你做到了"的小事。',
+                   rev: '你把自我价值和某个外部成就（收入/头衔/关系）捆绑太紧，松一松，你本身就是价值。' }
+      }
+    };
+
+    // ============ 重点牌的细化话术（大阿卡那关键牌 + 四张 Ace） ============
+    const CARD_TOPIC = {
+      0: { // 愚人
+        love:    { up: '这段感情正处于刚开始或可以重新开始的纯真阶段，允许自己不设防地靠近，但记得边走边看。',
+                   rev: '你在感情里过于冲动或过于天真，先别急着承诺或离开，给自己 7 天冷静期。' },
+        career:  { up: '适合开启一个全新的方向——一份新工作、一个副业、一个从未尝试过的领域，失败也不亏。',
+                   rev: '你在用"自由"和"跟随热情"为借口逃避落地，定一个具体里程碑再谈探索。' },
+        decision:{ up: '选那个让你心跳加速、但又说不清为什么的选项，你的直觉走在理智前面。',
+                   rev: '你在用"顺其自然"逃避决定，今晚写下两个选项各自最坏的结果，然后选你更能承担的。' }
+      },
+      1: { // 魔术师
+        love:    { up: '你有主动创造关系走向的能力——发出那条消息、说出那句话，对方比你想的更期待你的行动。',
+                   rev: '注意关系中是否有一方（你或对方）在演戏或操纵，真诚才是唯一可持续的魔术。' },
+        career:  { up: '你具备完成目标所需的一切资源，现在缺的不是能力，而是一次真正的启动。',
+                   rev: '警惕自我怀疑或完美主义让你无限拖延，今天做完一件未完成的小事。' },
+        decision:{ up: '相信你的能力去选择更难但更有意义的选项——你能做到。',
+                   rev: '别被"我不配"或"我不够好"的声音骗了，这是恐惧，不是事实。' }
+      },
+      2: { // 女祭司
+        love:    { up: '感情中有一些只可意会的东西正在发生，不要急着定义关系，让它自然浮现。',
+                   rev: '有某个你假装没看见的信号一直在发出——是时候承认它了。' },
+        career:  { up: '在做决定前给自己一夜独处的时间，答案会在你不"用力想"时出现。',
+                   rev: '你在用外部信息代替内在判断，今天关掉一切建议，只听自己的声音。' }
+      },
+      6: { // 恋人
+        love:    { up: '这段关系触及你内心深处的真实渴望，值得你认真对待——说出你的感受、做出真实的承诺。',
+                   rev: '关系中有一个你一直回避的核心问题（价值观、未来规划、对方的某个习惯），今晚就面对它。' },
+        decision:{ up: '这是一次关乎"你真正想成为谁"的选择——选那个让你靠近真实自我的选项。',
+                   rev: '你在"应该选的"和"想选的"之间摇摆，先承认你真正想要的，再决定要不要妥协。' }
+      },
+      10: { // 命运之轮
+        career:  { up: '运势正在转变的窗口——你过去的努力开始产生复利，保持动作不要停。',
+                   rev: '旧的循环在重演（同样的冲突、同样的僵局），这次选一个不同的反应，循环才会断。' },
+        decision:{ up: '这是一个时机问题——此刻做这个决定比晚做好十倍，别等完美时机。',
+                   rev: '不要在旧模式惯性下做决定，今晚停下来问：我是在选择还是在重复？' }
+      },
+      13: { // 死神
+        love:    { up: '关系需要一次彻底的结束或彻底的改变，温柔但坚定地让旧的去，新的才能来。',
+                   rev: '你在抱着一段已经死去的关系不肯放手，抗拒只会让痛苦更长，承认结束是最大的温柔。' },
+        career:  { up: '是时候结束某个项目、辞掉某份工作、放下某个头衔——结束不是失败，是腾空间。',
+                   rev: '你在延续一个明知不值得继续的事，成本越拖越高，今天就开始做退出计划。' },
+        decision:{ up: '选那个让旧版本的你死去的选项——成长总是带着告别。',
+                   rev: '你在用再试一次延迟一个必然的结束，承认它会让你轻 10 斤。' }
+      },
+      15: { // 恶魔
+        love:    { up: '关系有强烈的吸引力但也有被捆绑感——承认这种复杂性，分清爱和依赖。',
+                   rev: '你正在松开一段不健康的捆绑（控制、嫉妒、消耗），这是好消息，继续。' },
+        career:  { up: '用热情和欲望驱动工作没问题，但要警惕被金钱或地位绑架到不像自己。',
+                   rev: '你开始意识到某份体面工作其实是牢笼，制定一个半年内的退出计划。' },
+        decision:{ up: '看清那个看起来诱人的选项是否正在让你牺牲重要的东西。',
+                   rev: '你已经准备好摆脱那个长期困住你的模式——今天就开始说不。' }
+      },
+      16: { // 塔
+        love:    { up: '关系中有一个假象需要被打破——可能是一次争吵或揭露，痛但必要。',
+                   rev: '一场危机正在酝酿但还没爆发，此刻主动摊牌比被动承受更省力。' },
+        career:  { up: '一次突然的变故（被裁、项目失败、老板换人）会来，但它打开了一扇你意想不到的门。',
+                   rev: '你在苦苦维持一个迟早要崩的结构，放下它比保住它更有未来。' },
+        decision:{ up: '这是一次旧结构必须倒下的决定——短痛比长期慢性痛苦好得多。',
+                   rev: '你在拖延那个无法回避的决定，拖得越久代价越大。' }
+      },
+      17: { // 星星
+        love:    { up: '经历过一段混乱后，关系正进入修复与信任重建期——保持温柔与耐心。',
+                   rev: '你对爱情失去希望，但这个状态本身不是真相，是情绪。允许自己慢慢相信。' },
+        career:  { up: '理想与现实开始对齐，你正走在对的路上——继续，即使缓慢。',
+                   rev: '你和职业梦想失去了连接，今晚重新问一次：5 年后我想成为什么样的人？' }
+      },
+      18: { // 月亮
+        love:    { up: '关系里有未言明的情绪和潜意识在流动，直觉比对话更准确。',
+                   rev: '有一个你一直"感觉不对"但说不出来的东西，是真的。请相信你的直觉。' },
+        decision:{ up: '现在不是做重大决定的好时机，信息还没完全浮现，再等等。',
+                   rev: '你在被恐惧驱动做选择，先问一次：如果我不害怕，我会选什么？' }
+      },
+      19: { // 太阳
+        love:    { up: '关系进入明媚期——享受它、表达它，别用"会不会太好了"的不安毁掉它。',
+                   rev: '表面的快乐之下有未处理的问题，不用慌，但也不要继续假装看不见。' },
+        career:  { up: '成就与认可正在路上，享受这个阶段的果实，也为下一阶段蓄力。',
+                   rev: '你做得很好但感受不到，是时候让别人看见你的工作，也让自己看见。' }
+      },
+      22: { // 权杖 Ace
+        career:  { up: '一个新机会的火苗刚刚出现，抓住它——发出申请、报名、开始项目的第一步，就在这 72 小时内。',
+                   rev: '有一个想法一直在你脑子里但你没动，写下第一个具体动作，今晚就做完。' }
+      },
+      36: { // 圣杯 Ace
+        love:    { up: '一段新感情或旧感情的新阶段即将到来，敞开你的心，不要用过去的伤挡住现在。',
+                   rev: '你对爱关上了门，今天选一个人（朋友、家人、自己）真诚地表达一次感谢。' }
+      },
+      50: { // 宝剑 Ace
+        decision:{ up: '是时候看清真相做出决断——那个你一直回避的事实，就是答案。',
+                   rev: '你用"我还没想清楚"逃避决定，但真相是你已经知道，只是不敢选。' }
+      },
+      64: { // 钱币 Ace
+        career:  { up: '一个新的物质机会正在出现（工作、合作、客户），稳稳接住，别嫌小。',
+                   rev: '你错过或推掉了一个实在的机会，如果还来得及，主动把它捡回来。' },
+        money:   { up: '财富的种子正在发芽，立刻开一个新的储蓄账户或投资账户承接它。',
+                   rev: '警惕"太好不像真的"的财务机会——先验证对方资质，再谈钱。' }
+      }
+    };
+
+    // 分层 fallback：先单牌×主题，再花色×主题，最后主题兜底
+    function getCardTopicLine(card, topic, isReversed) {
+      const ori = isReversed ? 'rev' : 'up';
+      if (CARD_TOPIC[card.id] && CARD_TOPIC[card.id][topic]) {
+        return CARD_TOPIC[card.id][topic][ori];
+      }
+      if (card.suit && SUIT_TOPIC[card.suit] && SUIT_TOPIC[card.suit][topic]) {
+        return SUIT_TOPIC[card.suit][topic][ori];
+      }
+      const t = TOPIC_GENERIC[topic] || TOPIC_GENERIC.general;
+      return t[ori];
+    }
+
+    // ============ 单张牌解读：自然段落式，针对问题具体回应 ============
     function buildCardDeepRead(item, idx, style, topic) {
       const card = item.card;
       const ori = item.isReversed ? '逆位' : '正位';
       const meaning = item.isReversed ? card.meaning_reversed : card.meaning_upright;
       const keywords = item.isReversed ? card.keywords_reversed : card.keywords_upright;
+
+      // 牌名抬头（保持风格化）
       const lead = style.cardLeadIn({ idx, name_cn: card.name_cn, position: item.position }, ori);
 
-      // 维度 1：象征
-      const symbolLine = `🔮 象征意涵：${keywords.slice(0,4).join(' · ')}`;
+      // 核心含义（来自原始 meaning）
+      const coreLine = `它的核心能量是：${meaning}`;
 
-      // 维度 2：能量本质
-      const energyLine = `🌊 能量本质：${style.meaningJoiner}${meaning}`;
+      // 针对问题主题的具体话术
+      const topicLine = topic
+        ? `具体到你的问题——${getCardTopicLine(card, topic, item.isReversed)}`
+        : `具体到你的当下——${getCardTopicLine(card, 'general', item.isReversed)}`;
 
-      // 维度 3：与你的关联（结合主题）
-      const topicAngle = TOPIC_ANGLES[topic] || TOPIC_ANGLES.general;
-      const dim = topicAngle.dimensions[idx % topicAngle.dimensions.length];
-      const relLine = `🪞 对你而言：在「${topicAngle.focus}」的「${dim}」这一面，这张牌${item.isReversed ? '提示你需要审视、调整或释放' : '为你带来肯定与方向'}。`;
+      // 关键词点睛
+      const kwLine = `关键词：${keywords.slice(0, 4).join('、')}。`;
 
-      // 维度 4：行动指引
+      // 具体行动（精简版，避免和整体建议重复）
       const action = buildCardAction(card, item.isReversed, topic);
-      const actionLine = `${style.actionPrefix}：${action}`;
+      const actionLine = `所以此刻，${action}。`;
 
-      return `${lead}\n${symbolLine}\n${energyLine}\n${relLine}\n${actionLine}`;
+      // 自然段落拼接
+      return `${lead}\n${coreLine}\n${topicLine}\n${actionLine}\n${kwLine}`;
     }
 
     // 根据牌+正逆+主题 给出具体行动建议
@@ -4122,156 +4324,447 @@ ${cardsText}
     function buildStyledInterpretation(question, cards, styleKey) {
       const style = STYLES[styleKey] || STYLES.mystic;
       const hasQuestion = question && question.trim().length > 0;
+      const qTrim = hasQuestion ? question.trim() : '';
       const topic = detectTopic(question);
       const topicAngle = TOPIC_ANGLES[topic] || TOPIC_ANGLES.general;
       const cardCount = cards.length;
       const reversals = cards.filter(c => c.isReversed).length;
+      const reversedCards = cards.filter(c => c.isReversed);
       const majors = cards.filter(c => c.card.arcana === 'major').length;
 
-      // ---------- 1. 问题理解 ----------
+      // 倾向性判定：综合正逆位、关键牌、花色等给出一个"是/否/待定"的初步结论
+      const verdict = judgeVerdict(cards, topic, qTrim);
+
+      // 问题类型识别（是/否 类、要不要类、会怎样类、如何做类）
+      const qType = classifyQuestionType(qTrim);
+
+      // ---------- 1. 问题理解（先给结论，再讲依据） ----------
       let problem = style.problemPrefix;
       problem += `${style.salutation}：\n\n`;
       if (hasQuestion) {
-        problem += `你向牌阵抛出的问题是：\n"${question.trim()}"\n\n`;
-        if (topic && topic !== 'general') {
-          problem += `这是一个关于「${topicAngle.focus}」的提问。我将围绕「${topicAngle.dimensions.join('」、「')}」四个维度展开为你解读。\n\n`;
+        problem += `你的问题：\n"${qTrim}"\n\n`;
+        problem += `我的回答是——\n`;
+        problem += `${verdict.summary}\n\n`;
+        problem += `理由：${verdict.reason}\n\n`;
+        if (qType === 'yesno' || qType === 'should') {
+          problem += `如果你在等一个明确的"可以/不可以"，这副牌倾向的答案是：${verdict.label}。但请记住，这个倾向会随着你的选择而改变——牌给的是"此刻能量走向"，不是不可逆的判决。`;
+        } else if (qType === 'willhappen') {
+          problem += `关于"会不会发生"——这副牌显示的画面是：${verdict.outlook}。但结果不是命中注定，它取决于你在接下来几周的关键选择。`;
+        } else if (qType === 'howto') {
+          problem += `关于"怎么做"——这副牌给出的路径是：${verdict.path}。我会在后面的"整体建议"里把这条路径拆成具体可做的步骤。`;
         } else {
-          problem += `这是一个开放式的提问，我将从能量整体走向、核心议题、当下功课和可能的未来四个层面为你呈现。\n\n`;
+          problem += `关于"${topicAngle.focus}"这个层面——${verdict.outlook}`;
         }
-        problem += `提问本身已是觉察的开始——能问出这个问题，说明你内心已对答案有所感知，只是需要被印证或被指引。`;
       } else {
-        problem += `你没有提出具体问题，那就让这 ${cardCount} 张牌为你呈现当下生命场域的整体能量画面。\n\n`;
-        problem += `有时候，无问之问反而最诚实——它让你卸下了"想要某个答案"的执念，让真正需要被看见的能量浮现出来。`;
+        problem += `你没有提出具体问题，那就让这 ${cardCount} 张牌告诉你：此刻你生命中真正要紧的事是什么。\n\n`;
+        problem += `整体画面：${verdict.outlook}\n\n`;
+        problem += `有时最诚实的提问是"不提问"——它让潜意识自己浮现要被看见的内容。接下来的解读就围绕这张"总画面"展开。`;
       }
 
-      // ---------- 2. 牌阵关系分析（每张牌四维细节） ----------
+      // ---------- 2. 牌阵关系分析 ----------
       let cardsAnalysis = `${style.themeIntro}\n\n`;
-      cardsAnalysis += `📊 牌阵全景\n`;
-      cardsAnalysis += `· 共 ${cardCount} 张牌；其中大阿卡那 ${majors} 张，小阿卡那 ${cardCount - majors} 张\n`;
-      cardsAnalysis += `· 正位 ${cardCount - reversals} 张，逆位 ${reversals} 张\n`;
+      cardsAnalysis += `牌阵总览：${cardCount} 张牌中，正位 ${cardCount - reversals} 张、逆位 ${reversals} 张；大阿卡那 ${majors} 张、小阿卡那 ${cardCount - majors} 张。`;
       if (majors >= Math.ceil(cardCount / 2)) {
-        cardsAnalysis += `· 大阿卡那占比偏高，意味着此刻你正在面对的是命运层面的重要主题，而非日常琐碎\n`;
+        cardsAnalysis += `大阿卡那过半，说明当下你遇到的不是一个日常问题，而是会影响中长期走向的命题。`;
       } else {
-        cardsAnalysis += `· 小阿卡那为主，议题较聚焦于日常生活的具体面向\n`;
+        cardsAnalysis += `小阿卡那为主，问题集中在具体生活层面，可以用具体动作解决。`;
       }
-      // 花色分布
-      const suits = { wands:'🔥权杖(行动/激情)', cups:'💧圣杯(情感/关系)', swords:'⚔️宝剑(思考/沟通)', pentacles:'🌿钱币(物质/务实)' };
+      // 花色偏向
+      const suitLabels = { wands:'权杖（行动/激情）', cups:'圣杯（情感/关系）', swords:'宝剑（思考/沟通）', pentacles:'钱币（物质/务实）' };
       const suitCounts = {};
-      cards.forEach(c => { if (c.card.suit) suitCounts[c.card.suit] = (suitCounts[c.card.suit]||0) + 1; });
-      const dominantSuit = Object.entries(suitCounts).sort((a,b) => b[1]-a[1])[0];
+      cards.forEach(c => { if (c.card.suit) suitCounts[c.card.suit] = (suitCounts[c.card.suit] || 0) + 1; });
+      const dominantSuit = Object.entries(suitCounts).sort((a, b) => b[1] - a[1])[0];
       if (dominantSuit && dominantSuit[1] >= 2) {
-        cardsAnalysis += `· ${suits[dominantSuit[0]]}元素突出，提示当前能量集中于此领域\n`;
+        cardsAnalysis += `${suitLabels[dominantSuit[0]]}占比突出——`;
+        const suitHint = {
+          wands: '你正处于需要主动"做事"的阶段，情绪和思考都要为行动让路。',
+          cups:  '核心议题是情感与人际，先照顾好感受，理性才跟得上。',
+          swords:'需要清晰的思考与沟通，模糊地带正在消耗你。',
+          pentacles:'落到具体的钱、资源、身体上来，别在空想里转圈。'
+        };
+        cardsAnalysis += suitHint[dominantSuit[0]] + '\n\n';
+      } else {
+        cardsAnalysis += '\n\n';
       }
-      cardsAnalysis += `\n──────────\n\n`;
-
+      cardsAnalysis += `──────────\n\n`;
       // 逐张深度解读
       cards.forEach((c, i) => {
         cardsAnalysis += buildCardDeepRead(c, i, style, topic) + `\n\n`;
       });
 
-      // ---------- 3. 牌与牌之间的发展逻辑 ----------
-      let relationship = `🌀 牌阵叙事线\n\n`;
-      if (cardCount === 1) {
-        relationship += `单张抽牌指向一个核心讯息：${cards[0].card.name_cn}（${cards[0].isReversed ? '逆位' : '正位'}）。\n`;
-        relationship += `这张牌不必依赖其他牌，它本身就是一个完整的回答。请把它当作今日（或当下）最该被你看见的能量。`;
-      } else {
-        cards.forEach((c, i) => {
-          const arrow = i === cards.length - 1 ? '' : '\n   ↓\n';
-          relationship += `【${c.position}】《${c.card.name_cn}》（${c.isReversed ? '逆位' : '正位'}）${arrow}`;
-        });
-        relationship += `\n\n──────────\n\n`;
+      // ---------- 3. 牌与牌之间的发展逻辑（自然段落叙事） ----------
+      let relationship = buildNarrative(cards, style, topic, reversals);
 
-        // 推断叙事
-        if (cardCount >= 3) {
-          const past = cards[0], present = cards[1], future = cards[2];
-          relationship += `🪶 故事走向：\n\n`;
-          relationship += `从${past.card.name_cn}的能量出发——这是你的起点或背景，${past.isReversed ? '其中有未完结或被压抑的部分需要先被看见' : '它为你提供了基础与资源'}。\n\n`;
-          relationship += `${style.connector}你正处在${present.card.name_cn}的当下——${present.isReversed ? '当前的状态有阻滞或反向的张力，这并不意味着失败，而是一次内在的提醒' : '此刻能量正积极运转，是行动或表达的好时机'}。\n\n`;
-          relationship += `若沿此路径继续，未来将走向${future.card.name_cn}——${future.isReversed ? '前方的景象有未明朗之处，但这正是你可以提前调整以改变结果的窗口' : '未来呈现出明朗的方向，值得你保持当下的步调'}。\n\n`;
-          if (cardCount > 3) {
-            relationship += `此外，余下的牌为整个故事补充了更多侧面：\n`;
-            for (let i = 3; i < cardCount; i++) {
-              relationship += `· ${cards[i].position}的《${cards[i].card.name_cn}》提示${cards[i].isReversed ? '一个需要重新看待的角度' : '一项可被善用的能量'}\n`;
-            }
-          }
-        } else {
-          // 两张牌
-          relationship += `两张牌呈现了一组对照：${cards[0].card.name_cn} vs ${cards[1].card.name_cn}。\n`;
-          relationship += `它们之间的张力或互补，正是你需要在「${cards[0].position}」与「${cards[1].position}」之间觉察的核心。`;
-        }
-
-        // 能量总结
-        relationship += `\n\n🔋 能量总结：`;
-        if (reversals === 0) {
-          relationship += `全部正位——这是一手非常清晰的牌，能量流畅。请放心地按内在指引前行。`;
-        } else if (reversals === cardCount) {
-          relationship += `全部逆位——能量集中在内在转化阶段，外在的"成果"会延迟显现，但内在的成长正在加速。请耐心。`;
-        } else {
-          relationship += `${reversals}/${cardCount} 张逆位——既有顺流也有逆流，这是真实生活的常态。逆位的牌不是坏消息，而是被点亮的"功课"。`;
-        }
-      }
-
-      // ---------- 4. 整体建议 ----------
+      // ---------- 4. 整体建议（直接回应问题 + 具体可做动作） ----------
       let advice = `${style.adviceIntro}\n\n`;
       if (hasQuestion) {
-        advice += `针对你的问题"${question.trim()}"——\n\n`;
+        advice += `针对"${qTrim}"，我给你这样一份具体方案——\n\n`;
       }
 
-      // 4.1 优先关注
-      advice += `🎯 第一优先：\n`;
-      const reversedCards = cards.filter(c => c.isReversed);
-      if (reversedCards.length > 0) {
-        const top = reversedCards[0];
-        advice += `把注意力先放在「${top.position}」的《${top.card.name_cn}》（逆位）上。这是你目前最核心的功课——${buildCardAction(top.card, true, topic)}。\n\n`;
-      } else {
-        const top = cards[0];
-        advice += `当前能量很顺，请把握「${top.position}」的《${top.card.name_cn}》所带来的开端——${buildCardAction(top.card, false, topic)}。\n\n`;
-      }
+      // 4.1 一句话直答
+      advice += `【一句话直答】\n`;
+      advice += `${verdict.oneSentence}\n\n`;
 
-      // 4.2 短中长期具体行动
-      advice += `📅 行动节奏：\n\n`;
-      advice += `▸ 24 小时内：\n`;
-      advice += `  做一件最小但具体的事，用以回应「${cards[0].card.name_cn}」的提示。例如：写下你的真实感受、给某人发一条消息、列出你的可选项。\n\n`;
-      advice += `▸ 7 天内：\n`;
+      // 4.2 第一优先要做的事
+      advice += `【第一件事】\n`;
+      const topCard = reversedCards.length > 0 ? reversedCards[0] : cards[0];
+      const topAction = buildCardAction(topCard.card, topCard.isReversed, topic);
+      advice += `聚焦在「${topCard.position}」的《${topCard.card.name_cn}》（${topCard.isReversed ? '逆位' : '正位'}）——`;
+      advice += `${topAction}。`;
+      advice += `这是整副牌里最不该被忽略的那张。\n\n`;
+
+      // 4.3 24h / 7天 / 30天 具体动作
+      advice += `【具体行动节奏】\n`;
+      advice += `▸ 今天（24 小时内）：\n`;
+      advice += `  ${buildConcreteAction(cards[0], topic, 'today')}\n\n`;
+      advice += `▸ 本周（7 天内）：\n`;
       const midCard = cards[Math.min(1, cards.length - 1)];
-      advice += `  围绕「${midCard.card.name_cn}」展开一周的小型行动或观察。${midCard.isReversed ? '允许自己犯错与暂停，重要的是觉察而非完美。' : '保持节奏，每日推进一点。'}\n\n`;
+      advice += `  ${buildConcreteAction(midCard, topic, 'week')}\n\n`;
       if (cards.length >= 3) {
-        advice += `▸ 21~30 天内：\n`;
+        advice += `▸ 本月（30 天内）：\n`;
         const longCard = cards[cards.length - 1];
-        advice += `  让「${longCard.card.name_cn}」成为你的方向锚点。${longCard.isReversed ? '若进展不如预期，回到第一张牌重新审视前提。' : '当出现犹豫时，回想这张牌为你描绘的画面。'}\n\n`;
+        advice += `  ${buildConcreteAction(longCard, topic, 'month')}\n\n`;
       }
 
-      // 4.3 心态提醒（按风格不同语气）
-      advice += `🧘 心态校准：\n`;
-      if (styleKey === 'mystic') {
-        advice += `· 牌是镜子，不是判决书\n· 命运给你方向，但选择权永远在你手中\n· 当迷茫时，重新洗牌——人生亦如是`;
-      } else if (styleKey === 'friend') {
-        advice += `· 别太逼自己，慢慢来\n· 这只是当下的牌，明天的你会更清楚\n· 我相信你可以，真的`;
-      } else if (styleKey === 'psychologist') {
-        advice += `· 塔罗的功能是激活潜意识中已存在的认知\n· 任何"建议"都需结合你独特的生命语境\n· 持续的自我观察比一次解读更有价值`;
-      } else if (styleKey === 'coach') {
-        advice += `· 知道≠做到，分清观察和行动\n· 截止日期 = 进度的最大杠杆\n· 一周后回来看牌，对比变化`;
-      } else {
-        advice += `· 你不必读懂所有的诗，只要被一句触动\n· 命运是水，你是岸；水会流，岸会变\n· 故事还在继续，下一页等你翻开`;
-      }
+      // 4.4 避免的事
+      advice += `【避免的事】\n`;
+      advice += `${buildAvoidance(cards, topic, verdict)}\n\n`;
+
+      // 4.5 心态校准（按风格）
+      advice += `【心态校准】\n`;
+      const mindsets = {
+        mystic: '牌是镜子不是判决书——它告诉你"此刻"，不决定"永远"。最终的选择权一直在你手上。',
+        friend: '别太逼自己，也别太小看自己。你遇到的事情很多人也遇到过，你不会是第一个也不会是最后一个，慢慢来。',
+        psychologist: '塔罗的功能是帮你把潜意识里已经知道的东西说出来。真正的洞察，始于你愿意对自己说实话。',
+        coach: '读完就合上，去做。一周后回来看结果，对比执行与没执行的差距——这才是解读的价值。',
+        poet: '愿你记得：故事还没结束，下一页由你来写。牌只是在你翻页时，借风轻声提醒了你。'
+      };
+      advice += mindsets[styleKey] || mindsets.mystic;
       advice += style.endingNote;
 
       // ---------- 5. 一句话总结 ----------
       const cardNames = cards.map(c => c.card.name_cn).join(' · ');
-      let summary;
-      if (styleKey === 'mystic') {
-        summary = `🌙 星辰为你写下：${cardNames}——${reversals === 0 ? '光在你身后，路在你脚下' : '夜虽深，但你仍是自己的烛火'}。`;
-      } else if (styleKey === 'friend') {
-        summary = `💛 一句话：抽到的是 ${cardNames}。${reversals > cardCount/2 ? '最近确实不容易，但你扛得住。' : '看起来挺好的，按你的节奏来。'}`;
-      } else if (styleKey === 'psychologist') {
-        summary = `📋 投射结果概要：${cardNames}。建议结合此次解读，进行一次结构化的自我对话。`;
-      } else if (styleKey === 'coach') {
-        summary = `⚡ 牌：${cardNames}。重点：${reversedCards.length > 0 ? '先解决逆位的功课' : '保持节奏，加速执行'}。`;
-      } else {
-        summary = `🌹 ${cardNames}——这是今夜星河写给你的诗，请收下。`;
-      }
+      const summary = buildOneLineSummary(styleKey, cardNames, verdict, reversals, cardCount);
 
       return { problem, cardsAnalysis, relationship, advice, summary };
+    }
+
+    // ============ 辅助 1：问题类型识别 ============
+    function classifyQuestionType(q) {
+      if (!q) return 'none';
+      if (/[吗？?]$/.test(q) || /是不是|是否|会不会|能不能/.test(q)) return 'yesno';
+      if (/要不要|该不该|该怎么|应不应该|要吗/.test(q)) return 'should';
+      if (/会怎样|会如何|未来|接下来|之后|走向|结果|结局/.test(q)) return 'willhappen';
+      if (/怎么|如何|咋|怎样做|办法/.test(q)) return 'howto';
+      return 'open';
+    }
+
+    // ============ 辅助 2：倾向性判定（给一个结论而不是模糊回答） ============
+    function judgeVerdict(cards, topic, question) {
+      const reversals = cards.filter(c => c.isReversed).length;
+      const count = cards.length;
+
+      // 正向/负向关键牌（基于韦特传统含义）
+      const strongPositive = [1, 3, 6, 10, 17, 19, 21]; // 魔术师、女皇、恋人、命运之轮、星星、太阳、世界
+      const strongCaution  = [13, 15, 16, 18];          // 死神、恶魔、塔、月亮
+      const positiveCount = cards.filter(c => !c.isReversed && strongPositive.includes(c.card.id)).length
+                          + cards.filter(c => c.isReversed && strongCaution.includes(c.card.id)).length; // 这几张逆位反而是解脱
+      const cautionCount  = cards.filter(c => c.isReversed && strongPositive.includes(c.card.id)).length
+                          + cards.filter(c => !c.isReversed && strongCaution.includes(c.card.id)).length;
+      // 花色综合分
+      const suitScore = cards.reduce((acc, c) => {
+        if (!c.card.suit) return acc;
+        const sign = c.isReversed ? -1 : 1;
+        return acc + sign;
+      }, 0);
+      // 加权得分
+      const score = (positiveCount - cautionCount) * 2 + (count - reversals * 2) + suitScore * 0.5;
+
+      let label, summary, reason, oneSentence, outlook, path;
+      if (score >= 3) {
+        label = '倾向肯定';
+        summary = `牌阵给出相对积极的信号，答案更偏向"可以 / 会发生 / 值得去做"。`;
+        outlook = `接下来一段时间的能量是支持你的，但需要你主动走出第一步，而不是被动等待。`;
+        path = `趁这股能量在位时把关键动作做掉，不要反复推敲细节导致错过窗口。`;
+      } else if (score <= -2) {
+        label = '倾向谨慎';
+        summary = `牌阵显示有明显的阻滞或需要重新审视的信号，答案更偏向"不急着做 / 现在做代价较大"。`;
+        outlook = `当前能量不太顺，硬推会消耗过多。先停下来看清问题的根本再说。`;
+        path = `先"止损 / 止血 / 信息收集"，再谈"推进 / 决定"。顺序颠倒代价会很大。`;
+      } else {
+        label = '中立';
+        summary = `牌阵呈现出双向信号——既有支持也有阻碍，答案要看你自己怎么选。`;
+        outlook = `能量处在转折点，这既是风险也是机会，取决于你用哪种心态去应对。`;
+        path = `先用 48 小时收集 1~2 个关键事实，再做决定。不要凭情绪和猜测行动。`;
+      }
+
+      // 依据：基于几张最醒目的牌
+      const headline = cards.slice(0, Math.min(3, cards.length)).map(c => {
+        return `「${c.position}」《${c.card.name_cn}》（${c.isReversed ? '逆位' : '正位'}）`;
+      }).join('、');
+      reason = `核心线索来自 ${headline}。${
+        reversals === 0 ? '全部正位，能量是流动且支持性的。' :
+        reversals === count ? '全部逆位，说明核心功课在"内部调整"而非"外部冲刺"。' :
+        `${reversals}/${count} 张逆位——不是坏牌，而是被点亮的"功课"，你需要先处理这些再谈推进。`
+      }`;
+
+      // 一句话直答（结合主题更具体）
+      const topicAnswer = {
+        love:    { positive: '可以投入，但保持清醒，别用幻想代替真实的关系经营。',
+                   caution:  '先别急着定义关系或做决定，你们需要更多真实的对话和事实。',
+                   neutral:  '倾向支持你走近一步，但对方的回应才是真正的答案，不要独角戏。' },
+        career:  { positive: '可以推进，当前是窗口期。动作要快、节奏要稳。',
+                   caution:  '不建议现在换赛道或大动作，先把当下的漏洞补上再谈进攻。',
+                   neutral:  '可以开始规划但不急于执行，先用 2 周时间验证关键假设。' },
+        money:   { positive: '财务能量支持你做更积极的配置，但仍以"能承受损失"为底线。',
+                   caution:  '避免加仓或大额支出，优先处理已有的漏洞与负债。',
+                   neutral:  '保持观望，不下重注；同时整理一份真实账单看清现状。' },
+        study:   { positive: '是攻坚与冲刺的好时机，专注度能带来突破。',
+                   caution:  '不要再用"学更多"逃避核心问题，停下来诊断方法。',
+                   neutral:  '可以继续推进，但要从"铺量"切换到"精炼"。' },
+        health:  { positive: '身心状态在恢复，保持规律作息是关键，别折腾。',
+                   caution:  '该休息就真的休息，不要再用意志力硬撑。必要时就医。',
+                   neutral:  '亚健康状态，需要一次系统性的生活习惯调整。' },
+        decision:{ positive: '选更主动、更接近你真想要的那个选项——直觉是对的。',
+                   caution:  '现在不适合做重大决定，先去获取一个关键事实。',
+                   neutral:  '两个选项各有代价，列出真实账单（不是情绪账单）再选。' },
+        self:    { positive: '你已经到了可以整合与行动的时刻——做那件你一直拖着的事。',
+                   caution:  '先处理未消化的情绪或创伤，否则"成长"会反复退回原点。',
+                   neutral:  '给自己一段独处时间重新看清方向，不必急于"变成更好的人"。' },
+        general: { positive: '当下整体能量支持你，可以主动推进。',
+                   caution:  '当下要保守，先修复再扩张。',
+                   neutral:  '处于转折点，先获取信息再决策。' }
+      };
+      const bucket = score >= 3 ? 'positive' : (score <= -2 ? 'caution' : 'neutral');
+      oneSentence = (topicAnswer[topic] || topicAnswer.general)[bucket];
+
+      return { label, summary, reason, oneSentence, outlook, path, bucket };
+    }
+
+    // ============ 辅助 3：自然段落式牌阵叙事 ============
+    function buildNarrative(cards, style, topic, reversals) {
+      const count = cards.length;
+      let out = `这 ${count} 张牌之间并不是孤立的——它们讲的是一个连贯的故事。\n\n`;
+
+      if (count === 1) {
+        const c = cards[0];
+        out += `抽到单张《${c.card.name_cn}》${c.isReversed ? '逆位' : '正位'}，意味着此刻你不需要复杂的分析。`;
+        out += `这张牌本身就是完整的答案——`;
+        out += `${getCardTopicLine(c.card, topic || 'general', c.isReversed)}`;
+        return out;
+      }
+
+      if (count >= 3) {
+        const past = cards[0], present = cards[1], future = cards[2];
+        // 过去 → 现在
+        out += `故事从《${past.card.name_cn}》${past.isReversed ? '逆位' : '正位'}开始——这是"${past.position}"的底色。`;
+        out += past.isReversed
+          ? `它显示你身上有一些未被处理、未被说清的东西，这些东西会无形中影响当下的判断和感受。`
+          : `它为你提供了继续前行所需的基础和资源，这些东西是真实的、可被调用的。`;
+        out += `\n\n`;
+        out += `顺着这股能量走到"${present.position}"，出现了《${present.card.name_cn}》${present.isReversed ? '逆位' : '正位'}。`;
+        out += present.isReversed
+          ? `你现在的状态有某种阻力或反向张力——不是你不够努力，而是方法或方向需要调整。这种"卡住"其实是在提醒你停下来看看。`
+          : `此刻能量是积极流动的，你正处在可以表达、可以推进、可以做决定的窗口期。`;
+        out += `\n\n`;
+        // 现在 → 未来
+        out += `${style.connector}如果你沿当前这条路径继续走下去，会抵达"${future.position}"所指向的《${future.card.name_cn}》${future.isReversed ? '逆位' : '正位'}——`;
+        out += future.isReversed
+          ? `前方画面还不够明朗，意味着结果未定；但这恰好给了你调整的空间，越早调整越有主动权。`
+          : `未来呈现出清晰而正向的方向，这是牌对你现在走法的肯定。`;
+        out += `\n\n`;
+        if (count > 3) {
+          out += `除了这条主线，余下的 ${count - 3} 张牌为故事补充了侧面信息：`;
+          for (let i = 3; i < count; i++) {
+            const c = cards[i];
+            out += `\n· "${c.position}"的《${c.card.name_cn}》${c.isReversed ? '逆位' : '正位'}——${c.isReversed ? '提示一个你可能一直忽略的盲点' : '提示一项你可以主动利用的资源'}；`;
+          }
+          out += `\n\n`;
+        }
+      } else {
+        // 2 张牌
+        const a = cards[0], b = cards[1];
+        out += `《${a.card.name_cn}》${a.isReversed ? '逆位' : '正位'}（${a.position}）与《${b.card.name_cn}》${b.isReversed ? '逆位' : '正位'}（${b.position}）形成一组对照。`;
+        out += `它们之间的张力，就是你现在真正在处理的核心命题——`;
+        out += `前者代表你手上现有的能量，后者代表你正要面对或要迈向的状态。`;
+        out += `\n\n`;
+      }
+
+      // 能量总结
+      if (reversals === 0) {
+        out += `整副牌全部正位，说明这是一个"能量顺畅、尊重直觉"的局面。你需要做的不是制造新变量，而是顺水推舟。`;
+      } else if (reversals === count) {
+        out += `整副牌全部逆位，说明此刻的功课集中在内在——外在行动暂时不容易出成果，先把里面的东西理清楚，外在自然就通了。`;
+      } else {
+        out += `${reversals} 张逆位、${count - reversals} 张正位——既有顺流也有逆流。这是最常见、也最真实的配置：逆位的牌不是在"警告失败"，而是在点亮你需要优先处理的"功课"。`;
+      }
+
+      return out;
+    }
+
+    // ============ 辅助 4：具体可做动作（24h / 7天 / 30天） ============
+    function buildConcreteAction(cardItem, topic, horizon) {
+      const card = cardItem.card;
+      const isRev = cardItem.isReversed;
+
+      // 主题+horizon 的具体动作库
+      const base = {
+        love: {
+          today: [
+            '给对方发一条真实的消息（不是你平时爱发的那种，是你真正想说的）；或者，花 10 分钟写下你对这段关系的真实感受，不给任何人看。',
+            '今晚别刷社交，给自己一杯茶或一次散步，问一次："我在这段关系里真实的需求是什么？"'
+          ],
+          week: [
+            '约对方做一次面对面的真实对话（不是争吵也不是寒暄），把你最在意的那个问题摊开来谈 30 分钟。',
+            '这一周观察自己："哪些情绪是对方引起的，哪些其实来自我自己？"做一份小记录。'
+          ],
+          month: [
+            '一个月后重新评估这段关系："它是在让我成为更好的自己，还是在消耗我？"用事实（不是情绪）来回答。',
+            '如果关系是值得的，制定 3 件具体的共同计划；如果不是，制定一个体面退出的时间表。'
+          ]
+        },
+        career: {
+          today: [
+            '打开你的工作清单，砍掉 1~2 项不创造价值的事；然后选 1 件最重要的，今天把它推进到下一阶段。',
+            '给一个你欣赏但很久没联系的前辈/同行发一条消息——不求回报，只是重新建立连接。'
+          ],
+          week: [
+            '这一周把 70% 的精力投入到最重要的那一件事上（不是平均分配）。',
+            '每天结束时写 3 行复盘：今天做了什么有价值的事？什么没做？明天优先级是什么？'
+          ],
+          month: [
+            '一个月后用"一年后的我会怎么看此刻"来评估现在的路径——如果答案是"在浪费时间"，就该调整。',
+            '准备一次"假装我要换工作/换方向"的演练——更新简历、看看市场——不一定要走，但能看清自己值多少。'
+          ]
+        },
+        money: {
+          today: [
+            '打开账单，把过去 30 天的支出真实地看一遍（不是"我以为花了多少"，而是真实数据）。',
+            '取消 1~2 个你没在用的订阅，或设置一个自动储蓄（金额再小也行，关键是启动）。'
+          ],
+          week: [
+            '做一份真实预算：必要支出、弹性支出、储蓄。数字要具体到百元。',
+            '不做任何"冲动投资"。有好机会就写在纸上，过一周再决定。'
+          ],
+          month: [
+            '一个月后检查：储蓄率是否达到预期？支出结构是否更健康？',
+            '学习一个新的财务概念（通胀、复利、资产配置），不求全懂，只求比现在多懂一点。'
+          ]
+        },
+        study: {
+          today: [
+            '把最拖延的那一科/那一章，拆成今天 30 分钟能做完的一小部分，然后真的做完。',
+            '关掉所有与学习无关的通知，给自己一个专注的 90 分钟块。'
+          ],
+          week: [
+            '这一周每天固定时间、固定地点、固定量——不追求多，追求稳定。',
+            '每天结束做一次简短复盘：今天学到什么？明天先做什么？'
+          ],
+          month: [
+            '一个月后用一次小测/模拟/复述来验证掌握度——不靠"感觉自己学了"，靠真实反馈。',
+            '找一位同路人（同学/朋友/线上社群）互相检查进度——一个人走不远。'
+          ]
+        },
+        health: {
+          today: [
+            '今晚 11 点前放下手机；睡前做 5 分钟深呼吸。',
+            '明天起连续 3 天，快走或运动 20 分钟——强度低也没关系，关键是启动。'
+          ],
+          week: [
+            '这一周记录睡眠、饮食、情绪三项基础数据，不改变，只观察。',
+            '每天给自己一个小时的"无用时间"——不学习、不工作、不刷手机。'
+          ],
+          month: [
+            '一个月后做一次身体基础指标检查（血压、睡眠质量、体重/体脂）。',
+            '如果情绪长期低迷或焦虑，预约一次专业心理咨询——这和感冒了去看医生是一个道理。'
+          ]
+        },
+        decision: {
+          today: [
+            '用一张纸分两列，列出两个选项各自的"真实代价"和"真实收益"（而不是情绪层面的）。',
+            '问自己一个问题："如果不害怕，我会选哪个？"写下答案。'
+          ],
+          week: [
+            '这一周去获取 1~2 个关键事实——咨询懂行的人、查一次数据、做一次小范围试探。',
+            '不要和会影响你情绪的人反复讨论这个选择，讨论只会稀释你的判断。'
+          ],
+          month: [
+            '一个月后再看：无论选哪个，你都应该已经有了更多事实和更坚定的决心。',
+            '如果到这个时候还没决定，就选"让自己更自由的那个"——大多数时候这个维度最重要。'
+          ]
+        },
+        self: {
+          today: [
+            '写下 3 件"你一直想做但没开始"的事，然后从里面选最小的一件，今天做完它的第一步。',
+            '给过去的自己写一段话——不是评判，是承认："那时候你已经尽力了。"'
+          ],
+          week: [
+            '这一周停掉 1~2 件"消耗你但你一直不肯承认"的事/人。',
+            '每天给自己 20 分钟独处时间，不刷手机，什么都不做——让思绪自然浮现。'
+          ],
+          month: [
+            '一个月后回看这份解读，核对："我身上哪些地方确实变了？"',
+            '如果没什么变化，不是你不行，是你没真的把它付诸行动——重新开始一次就好。'
+          ]
+        },
+        general: {
+          today: [
+            '选一件最小但具体的事，用它来回应这次解读——写一页日记、打一个电话、做一个决定。',
+            '今晚别再反复思考这次解读，带着它去睡觉，让潜意识帮你整合。'
+          ],
+          week: [
+            '这一周用"观察"代替"评判"——观察自己的反应、观察事情的走向、不急于下结论。',
+            '每天给自己 1 件"真正重要的事"，并真的把它做完。'
+          ],
+          month: [
+            '一个月后重新抽一次牌，对比这次和那次——你会看见自己的变化。',
+            '记住一次不代表一切；你对自己长期的观察，比任何一次解读都更准确。'
+          ]
+        }
+      };
+
+      const list = (base[topic] || base.general)[horizon];
+      const pick = list[isRev ? 1 % list.length : 0];
+      return pick;
+    }
+
+    // ============ 辅助 5：避免的事 ============
+    function buildAvoidance(cards, topic, verdict) {
+      const avoidByTopic = {
+        love:    '别用"他/她应该懂"代替真实沟通；别在情绪激烈时发重要消息；别用模糊的"也许"掩盖你想说清楚的那句话。',
+        career:  '别用忙碌代替思考；别在没验证前推翻已有的；别把"加班感"当"价值感"。',
+        money:   '别被 FOMO（怕错过）驱动下单；别把积蓄押在一个你不懂的产品上；别用新债还旧债。',
+        study:   '别用"学更多"逃避"面对难的那部分"；别在没计划时熬夜刷题；别和比自己强很多或弱很多的人比进度。',
+        health:  '别用"意志力"替代"好好休息"；别用"周末补回来"欺骗自己；别忽略身体发出的重复信号。',
+        decision:'别在情绪低谷做重大决定；别因为别人"希望你选 A"而选 A；别用"再观望一下"无限拖延。',
+        self:    '别用忙碌和社交掩盖真正的感受；别拿别人的时间表要求自己；别低估每天一点点的力量。',
+        general: '别把"焦虑地想"当成"认真地想"；别用完美计划替代已经开始；别让别人的节奏打乱你自己的节奏。'
+      };
+      const extra = verdict.bucket === 'caution'
+        ? '另外，当前能量偏谨慎，特别要避免"冲动推进"——你现在多等一步，未来就少走十步弯路。'
+        : verdict.bucket === 'positive'
+          ? '另外，当前能量很顺，最该避免的反而是"过度思考"——分析太多会让你错过窗口。'
+          : '另外，在能量中立的时刻，最该避免的是"情绪化决策"——请让理性多走一点。';
+      return (avoidByTopic[topic] || avoidByTopic.general) + '\n' + extra;
+    }
+
+    // ============ 辅助 6：一句话总结 ============
+    function buildOneLineSummary(styleKey, cardNames, verdict, reversals, count) {
+      const coreMsg = verdict.oneSentence;
+      switch (styleKey) {
+        case 'mystic':
+          return `🌙 ${cardNames}——星辰告诉你：${coreMsg}`;
+        case 'friend':
+          return `💛 看这几张牌（${cardNames}），我想跟你说：${coreMsg}`;
+        case 'psychologist':
+          return `📋 今日投射（${cardNames}）：${coreMsg}`;
+        case 'coach':
+          return `⚡ ${cardNames} → 行动指令：${coreMsg}`;
+        case 'poet':
+          return `🌹 ${cardNames}——${coreMsg}`;
+        default:
+          return `${cardNames}——${coreMsg}`;
+      }
     }
 
     function generateSummary(cards) {
