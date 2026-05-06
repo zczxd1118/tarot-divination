@@ -1151,7 +1151,7 @@
       box-shadow: 0 0 12px var(--accent-glow);
     }
 
-    /* Wheel of Fate */
+    /* Wheel of Fate (上扇形 120°) */
     .wheel-area {
       width: 100%;
       max-width: 580px;
@@ -1161,25 +1161,28 @@
       align-items: center;
     }
 
+    /* 扇形舞台：宽高比 2:1（容器更扁平），圆心放在底部中央 */
     .wheel-stage {
       position: relative;
       width: 100%;
-      max-width: 480px;
-      aspect-ratio: 1;
+      max-width: 520px;
+      aspect-ratio: 2 / 1.1;     /* 上方留出指针空间 */
       margin: 0 auto;
       user-select: none;
       -webkit-user-select: none;
       touch-action: none;
+      overflow: visible;
     }
 
+    /* 指针：在容器顶部正中，从上往下指 */
     .wheel-pointer {
       position: absolute;
-      top: -8px;
+      top: 4px;
       left: 50%;
       transform: translateX(-50%);
-      font-size: 2rem;
+      font-size: 2.2rem;
       color: var(--gold-primary);
-      filter: drop-shadow(0 0 8px var(--accent-glow));
+      filter: drop-shadow(0 0 10px var(--accent-glow));
       z-index: 10;
       pointer-events: none;
       animation: pointerPulse 2s ease-in-out infinite;
@@ -1187,24 +1190,61 @@
 
     @keyframes pointerPulse {
       0%, 100% { transform: translateX(-50%) translateY(0); }
-      50% { transform: translateX(-50%) translateY(-4px); }
+      50% { transform: translateX(-50%) translateY(4px); }
     }
 
+    /*
+      关键：disc 是"完整大圆"，但用 clip-path 裁出顶部 120° 扇形
+      圆心定位在容器底部中央，扇形朝上张开 ±60°
+    */
     .wheel-disc {
       position: absolute;
-      inset: 0;
+      /* 圆盘的直径 = 容器宽度的 1.6 倍（让弧线饱满） */
+      width: 160%;
+      aspect-ratio: 1;
+      left: 50%;
+      bottom: -30%;              /* 圆心位置：容器底部往下偏一点 */
+      transform: translateX(-50%) rotate(0deg);
+      transform-origin: center center;
       border-radius: 50%;
-      background: radial-gradient(circle, rgba(45, 27, 78, 0.6) 0%, rgba(13, 6, 20, 0.9) 70%);
-      border: 2px solid var(--gold-dark);
-      box-shadow: 0 0 30px var(--accent-glow), inset 0 0 30px rgba(0, 0, 0, 0.6);
+      background: radial-gradient(circle, rgba(45, 27, 78, 0.5) 30%, rgba(13, 6, 20, 0.95) 70%, transparent 75%);
       cursor: grab;
-      transform-origin: center;
       will-change: transform;
+      /* 用 clip-path 只露出"扇区"——顶部正中 ±60° = 120° 弧 */
+      /* 这个 clip-path 是相对 disc 自己的；disc 的几何中心就是圆心 */
+      /* 用 polygon 切出一个三角扇区（向上张开） */
+      clip-path: polygon(
+        50% 50%,
+        calc(50% - 86.6%) calc(50% - 50%),
+        calc(50% + 86.6%) calc(50% - 50%)
+      );
+      /* 实际上面是 ±60°：cos(60°)=0.5, sin(60°)=0.866 → 用百分比表示 */
+    }
+
+    /* 扇形装饰：在 disc 之上画一个发光的弧线边 */
+    .wheel-frame {
+      position: absolute;
+      width: 160%;
+      aspect-ratio: 1;
+      left: 50%;
+      bottom: -30%;
+      transform: translateX(-50%);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 3;
+      box-shadow: 0 0 30px var(--accent-glow), inset 0 0 30px rgba(0, 0, 0, 0.6);
+      clip-path: polygon(
+        50% 50%,
+        calc(50% - 86.6%) calc(50% - 50%),
+        calc(50% + 86.6%) calc(50% - 50%)
+      );
+      border: 2px solid var(--gold-dark);
     }
 
     .wheel-disc.grabbing { cursor: grabbing; }
     .wheel-disc.spinning { cursor: default; }
 
+    /* 扇形之外的卡片自动隐藏（用 JS 给加 .out 类） */
     .wheel-card {
       position: absolute;
       top: 50%;
@@ -1221,8 +1261,12 @@
       color: var(--gold-primary);
       font-size: 1rem;
       transform-origin: center;
-      transition: box-shadow 0.2s, border-color 0.2s;
+      transition: opacity 0.15s, box-shadow 0.2s, border-color 0.2s;
       pointer-events: none;
+    }
+
+    .wheel-card.out {
+      opacity: 0;
     }
 
     .wheel-card.highlighted {
@@ -1236,6 +1280,7 @@
       filter: grayscale(0.6);
       background: rgba(13, 6, 20, 0.7);
     }
+    .wheel-card.used.out { opacity: 0; }
     .wheel-card.used .wheel-card-symbol {
       color: var(--text-muted);
     }
@@ -1253,39 +1298,38 @@
       transition: transform 0.2s, color 0.2s;
     }
 
+    /* 中央信息区：放在容器底部中央（即圆心附近，但悬浮在上层） */
     .wheel-center {
       position: absolute;
-      top: 50%;
+      bottom: 4px;
       left: 50%;
-      width: 110px;
-      height: 110px;
-      margin: -55px 0 0 -55px;
-      border-radius: 50%;
-      background: radial-gradient(circle, rgba(201, 162, 39, 0.2) 0%, rgba(13, 6, 20, 0.95) 70%);
+      transform: translateX(-50%);
+      width: 180px;
+      padding: 0.55rem 0.9rem;
+      border-radius: 14px;
+      background: rgba(13, 6, 20, 0.85);
       border: 1px solid var(--gold-primary);
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
-      gap: 0.4rem;
+      gap: 0.25rem;
       pointer-events: none;
       z-index: 6;
     }
 
     .wheel-center-symbol {
-      font-size: 1.8rem;
+      font-size: 1.3rem;
       color: var(--gold-primary);
-      filter: drop-shadow(0 0 6px var(--accent-glow));
+      filter: drop-shadow(0 0 4px var(--accent-glow));
     }
 
     .wheel-center-text {
       font-size: 0.78rem;
       color: var(--gold-light);
       text-align: center;
-      padding: 0 0.5rem;
       line-height: 1.3;
-      max-width: 90px;
       letter-spacing: 0.05em;
+      white-space: pre-line;
     }
 
     .wheel-controls {
@@ -1313,17 +1357,17 @@
 
     @media (max-width: 480px) {
       .wheel-card {
-        width: 30px; height: 46px;
-        margin: -23px 0 0 -15px;
-        font-size: 0.85rem; border-radius: 3px;
+        width: 28px; height: 42px;
+        margin: -21px 0 0 -14px;
+        font-size: 0.78rem; border-radius: 3px;
       }
       .wheel-center {
-        width: 90px; height: 90px;
-        margin: -45px 0 0 -45px;
+        width: 150px;
+        padding: 0.45rem 0.7rem;
       }
-      .wheel-center-symbol { font-size: 1.5rem; }
-      .wheel-center-text { font-size: 0.7rem; max-width: 76px; }
-      .wheel-pointer { font-size: 1.5rem; top: -6px; }
+      .wheel-center-symbol { font-size: 1.1rem; }
+      .wheel-center-text { font-size: 0.7rem; }
+      .wheel-pointer { font-size: 1.7rem; top: 2px; }
     }
 
     /* Style Selector */
@@ -2154,6 +2198,7 @@
           <div class="wheel-stage">
             <div class="wheel-pointer">▼</div>
             <div class="wheel-disc" id="wheelDisc"></div>
+            <div class="wheel-frame"></div>
             <div class="wheel-center">
               <span class="wheel-center-symbol">✦</span>
               <span class="wheel-center-text" id="wheelHighlightName">旋转或拖动</span>
@@ -3644,7 +3689,9 @@
 
       const stage = document.querySelector('.wheel-stage');
       const stageW = stage.clientWidth || 480;
-      const radius = stageW * 0.42;
+      // 圆盘宽度 = 160% 容器宽，半径就是 0.8 * stageW
+      // 让牌位于半径的 90% 处（贴近弧线但不重合边框）
+      const radius = stageW * 0.8 * 0.88;
 
       cards.forEach((card, i) => {
         const angle = (i * 360 / n);
@@ -3668,7 +3715,26 @@
     function applyWheelTransform() {
       const disc = document.getElementById('wheelDisc');
       if (!disc) return;
-      disc.style.transform = `rotate(${state.wheelAngle}deg)`;
+      // disc 几何上是绝对定位 + translate(-50%) 到底部中央，所以旋转要保留这个 translate
+      disc.style.transform = `translateX(-50%) rotate(${state.wheelAngle}deg)`;
+      // 同步：更新每张牌的"是否在可见扇形内"
+      updateCardVisibility();
+    }
+
+    // 仅顶部 ±60° 范围内的牌可见，其余的隐藏
+    function updateCardVisibility() {
+      const disc = document.getElementById('wheelDisc');
+      if (!disc) return;
+      const els = disc.querySelectorAll('.wheel-card');
+      const theta = state.wheelAngle;
+      els.forEach(el => {
+        const orig = parseFloat(el.dataset.angle) || 0;
+        // 牌在世界坐标系（不旋转 disc 时为 orig 度）；disc 旋转 theta 后世界角 = (orig + theta) mod 360
+        // 顶部正中是 0°（即 360°），可见区间是 -60° ~ +60°（也就是 ≤60 或 ≥300）
+        let world = ((orig + theta) % 360 + 360) % 360;
+        const inFan = world <= 60 || world >= 300;
+        el.classList.toggle('out', !inFan);
+      });
     }
 
     // 找指针下的那张牌（按完整 78 张计算）；如果指到的是已选牌，则视为不可选
