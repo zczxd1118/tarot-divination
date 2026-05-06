@@ -1231,6 +1231,19 @@
       z-index: 5;
     }
 
+    .wheel-card.used {
+      opacity: 0.35;
+      filter: grayscale(0.6);
+      background: rgba(13, 6, 20, 0.7);
+    }
+    .wheel-card.used .wheel-card-symbol {
+      color: var(--text-muted);
+    }
+    .wheel-card.used.highlighted {
+      box-shadow: 0 0 12px rgba(154, 142, 176, 0.4);
+      border-color: var(--text-muted);
+    }
+
     .wheel-card.highlighted .wheel-card-symbol {
       color: var(--gold-light);
       transform: scale(1.2);
@@ -3562,7 +3575,7 @@
       if (existingIndex !== -1) {
         // 取消选择
         state.selectedCards.splice(existingIndex, 1);
-        if (state.pickMode === 'wheel') renderWheel(); else renderCardGrid();
+        if (state.pickMode === 'wheel') refreshWheelUsedMarks(); else renderCardGrid();
         updateSelectionSlots();
         return;
       }
@@ -3574,12 +3587,23 @@
         position: spreadConfig.positions[state.selectedCards.length]
       });
 
-      if (state.pickMode === 'wheel') renderWheel(); else renderCardGrid();
+      if (state.pickMode === 'wheel') refreshWheelUsedMarks(); else renderCardGrid();
       updateSelectionSlots();
 
       if (state.selectedCards.length === spreadConfig.count) {
         setTimeout(() => { showManualRevealPage(); }, 500);
       }
+    }
+
+    // 仅更新 wheel-card 的 .used 标记，不重排（避免泄露身份）
+    function refreshWheelUsedMarks() {
+      const disc = document.getElementById('wheelDisc');
+      if (!disc) return;
+      disc.querySelectorAll('.wheel-card').forEach(el => {
+        const id = parseInt(el.dataset.cardId, 10);
+        el.classList.toggle('used', isCardSelected(id));
+      });
+      updateWheelHighlight();
     }
 
     // ========== 轮盘抽牌实现 ==========
@@ -3603,10 +3627,12 @@
       }
     }
 
-    // 轮盘上当前可抽的牌（已选中的会被剔除）
+    // 轮盘上的牌：始终显示完整 78 张，已选的牌不剔除（避免暴露身份），仅在 UI 上做"空槽"标记
     function getWheelCards() {
-      const selectedIds = new Set(state.selectedCards.map(s => s.card.id));
-      return state.deck.filter(c => !selectedIds.has(c.id));
+      return state.deck;
+    }
+    function isCardSelected(cardId) {
+      return state.selectedCards.some(s => s.card.id === cardId);
     }
 
     function renderWheel() {
@@ -3614,30 +3640,22 @@
       const cards = getWheelCards();
       disc.innerHTML = '';
       const n = cards.length;
-      if (n === 0) {
-        document.getElementById('wheelHighlightName').textContent = '已抽满';
-        return;
-      }
+      if (n === 0) return;
 
-      // 牌沿圆周分布；半径取容器宽度比例（CSS 设计上是相对位置）
-      // 用 CSS 变量做计算，但这里直接用 px：让卡片中心位于半径处
-      // 容器是正方形，我们以中心为原点
       const stage = document.querySelector('.wheel-stage');
       const stageW = stage.clientWidth || 480;
-      const radius = stageW * 0.42; // 略小于半径
+      const radius = stageW * 0.42;
 
       cards.forEach((card, i) => {
         const angle = (i * 360 / n);
         const el = document.createElement('div');
         el.className = 'wheel-card';
+        if (isCardSelected(card.id)) el.classList.add('used');
         el.dataset.cardId = card.id;
         el.dataset.angle = angle;
-        // 关键：每张牌相对圆心放置，再绕圆心旋转
-        // 实际位置 = translate(cos*r, sin*r) ; 然后让卡牌"朝外"旋转 (angle + 90)
         const rad = (angle - 90) * Math.PI / 180;
         const x = Math.cos(rad) * radius;
         const y = Math.sin(rad) * radius;
-        // 用 translate 把卡片定位到圆周；再用 rotate 让卡片正对圆心外
         el.style.transform = `translate(${x}px, ${y}px) rotate(${angle}deg)`;
         el.innerHTML = `<span class="wheel-card-symbol">✦</span>`;
         disc.appendChild(el);
@@ -3653,19 +3671,14 @@
       disc.style.transform = `rotate(${state.wheelAngle}deg)`;
     }
 
-    // 计算指针指向的牌：指针在最顶部（angle=0），所以转盘旋转 θ 后，世界角 -θ 处的牌就到了顶部
+    // 找指针下的那张牌（按完整 78 张计算）；如果指到的是已选牌，则视为不可选
     function findPointerCard() {
       const cards = getWheelCards();
       const n = cards.length;
       if (n === 0) return null;
-      // 转盘角度的归一化
       let theta = ((state.wheelAngle % 360) + 360) % 360;
-      // 我们要找：转后角接近 0 的那张牌
-      // 牌的原始角是 i*(360/n)，旋转后位置 = (orig + theta) mod 360
-      // 我们要 (orig + theta) ≡ 0 (mod 360)，即 orig ≈ (360 - theta) mod 360
       const target = (360 - theta + 360) % 360;
       const step = 360 / n;
-      // 找最接近 target 的索引
       let bestIdx = 0, bestDiff = Infinity;
       for (let i = 0; i < n; i++) {
         const orig = i * step;
@@ -3673,7 +3686,8 @@
         if (diff > 180) diff = 360 - diff;
         if (diff < bestDiff) { bestDiff = diff; bestIdx = i; }
       }
-      return { card: cards[bestIdx], idx: bestIdx };
+      const card = cards[bestIdx];
+      return { card, idx: bestIdx, alreadyUsed: isCardSelected(card.id) };
     }
 
     function updateWheelHighlight() {
@@ -3683,30 +3697,41 @@
       const nameEl = document.getElementById('wheelHighlightName');
       const pickBtn = document.getElementById('wheelPickBtn');
 
-      // 清掉所有高亮
       disc.querySelectorAll('.wheel-card.highlighted').forEach(el => el.classList.remove('highlighted'));
 
-      if (!result) {
+      const spreadConfig = SPREADS[state.spread];
+      const total = spreadConfig.count;
+      const selected = state.selectedCards.length;
+
+      if (!result || selected >= total) {
         nameEl.textContent = '已抽满';
         pickBtn.disabled = true;
         return;
       }
-      // 把对应的牌加上高亮
+
+      // 高亮指针下的牌（即便它是已选过的，也高亮，但不显示牌名，按钮置灰）
       const els = disc.querySelectorAll('.wheel-card');
       if (els[result.idx]) els[result.idx].classList.add('highlighted');
-      nameEl.textContent = result.card.name_cn;
-      pickBtn.disabled = false;
+
+      // 中央文字：永远不暴露牌名，仅显示进度 + 状态
+      if (result.alreadyUsed) {
+        nameEl.textContent = `这张已被选过\n请继续旋转`;
+        pickBtn.disabled = true;
+      } else {
+        nameEl.textContent = `第 ${selected + 1} / ${total} 张`;
+        pickBtn.disabled = false;
+      }
     }
 
     function pickWheelCard() {
       if (state.wheelSpinning) return;
       const result = findPointerCard();
       if (!result) return;
+      if (result.alreadyUsed) return;       // 防止误选
       pickCardForSlot(result.card);
-      // 抽完一张后，轮盘的牌少一张，需要重排
-      if (state.selectedCards.length < SPREADS[state.spread].count) {
-        renderWheel();
-      }
+      // 选完一张后，刷新轮盘标记（位置不变，但当前指针位置可能变成 used）
+      updateWheelHighlight();
+      // 不再调用 renderWheel()——保持视觉布局完全一致，避免任何"消失"动作泄露身份
     }
 
     function spinWheel() {
